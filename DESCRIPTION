@@ -1,0 +1,31 @@
+Package: ellmer.extensions
+Title: Groq and Gemini Provider Extensions for ellmer
+Version: 0.1.0
+Authors@R:
+    person("Xavier", "Marquez", , "marquez.x@gmail.com", role = c("aut", "cre"))
+Description: Provides ellmer provider extensions with full support for Groq
+    structured outputs, batch processing, and parallel execution, plus Gemini
+    file-based batch chat support. Extends ellmer provider classes to add
+    provider-specific batch semantics and compatibility behaviors.
+License: MIT + file LICENSE
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.2
+Depends:
+    R (>= 4.1.0)
+Imports:
+    S7 (>= 0.1.0),
+    ellmer (>= 0.0.1),
+    purrr,
+    cli,
+    httr2,
+    curl,
+    withr,
+    jsonlite,
+    rlang
+Suggests:
+    testthat (>= 3.0.0),
+    lifecycle
+Config/testthat/edition: 3
+URL: https://github.com/xmarquez/ellmer.extensions, https://xmarquez.github.io/ellmer.extensions/
+BugReports: https://github.com/xmarquez/ellmer.extensions/issues

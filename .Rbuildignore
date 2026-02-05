@@ -1,0 +1,12 @@
+^ellmer\.extensions\.Rproj$
+^\.Rproj\.user$
+^LICENSE\.md$
+^README\.Rmd$
+^\.github$
+^\.claude$
+^data-raw$
+^_pkgdown\.yml$
+^docs$
+^pkgdown$
+^\.quarto$
+^AGENTS\.md$

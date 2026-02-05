@@ -1,0 +1,29 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(del:*)",
+      "Bash(Rscript:*)",
+      "Bash(cat:*)",
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nInitial commit: groqDeveloper R package\n\n- Implements ProviderGroqDeveloper S7 class extending ellmer::ProviderOpenAI\n- Adds chat_groq_developer\\(\\) function for Groq API integration\n- Overrides chat_body method to remove unsupported ''include'' field\n- Implements strict JSON schema validation with additionalProperties: false\n- Inherits batch and parallel processing from ProviderOpenAI\n- Full testthat infrastructure with 44 tests across 4 test files\n- Passes devtools::check\\(\\) with 0 errors, 0 warnings, 0 notes\n\n🤖 Generated with [Claude Code]\\(https://claude.com/claude-code\\)\n\nCo-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nFix parallel_chat_structured: filter additional unsupported Groq fields\n\nRemoves store, reasoning, and service_tier fields from request body\nin addition to include field. These fields are added by ellmer''s\nProviderOpenAI but are not supported by Groq''s API.\n\n🤖 Generated with [Claude Code]\\(https://claude.com/claude-code\\)\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(git mv:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nFix parallel_chat_structured by extending ProviderOpenAICompatible\n\nChanged parent class from ProviderOpenAI to ProviderOpenAICompatible.\nProviderOpenAI uses the OpenAI Responses API format \\(with text, input,\ninclude fields\\) which Groq doesn''t support. ProviderOpenAICompatible\nuses the Chat Completions API format \\(response_format, messages\\) that\nGroq''s API expects.\n\n- Removed chat_body override \\(no longer needed\\)\n- Updated tests to check for ProviderOpenAICompatible parent\n- Renamed test-batch-support.R to test-provider-inheritance.R\n\n🤖 Generated with [Claude Code]\\(https://claude.com/claude-code\\)\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(git commit:*)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "WebFetch(domain:console.groq.com)",
+      "WebFetch(domain:github.com)",
+      "Bash(curl:*)",
+      "Bash(git push)",
+      "Bash(\"C:/Program Files/R/R-4.5.1/bin/Rscript.exe\" \"C:/Users/marquexa/.claude/scripts/get_r_package_docs.R\" stats lm)",
+      "Bash(\"C:/Program Files/R/R-4.5.1/bin/Rscript.exe\" \"C:/Users/marquexa/.claude/scripts/get_r_package_docs.R\" --source dplyr filter)",
+      "Bash(\"C:/Program Files/R/R-4.5.1/bin/Rscript.exe\" \"C:/Users/marquexa/.claude/scripts/get_r_package_docs.R\" ellmer)",
+      "Bash(\"C:/Program Files/R/R-4.5.1/bin/Rscript.exe\" \"C:/Users/marquexa/.claude/scripts/get_r_package_docs.R\" --source ellmer Chat)",
+      "Bash(\"C:/Program Files/R/R-4.5.1/bin/Rscript.exe\" \"C:/Users/marquexa/.claude/scripts/get_r_package_docs.R\" --source ellmer ProviderGroq)",
+      "Bash(\"C:/Program Files/R/R-4.5.1/bin/Rscript.exe\" \"C:/Users/marquexa/.claude/scripts/get_r_package_docs.R\" --source ellmer chat_groq)",
+      "Bash(\"C:/Program Files/R/R-4.5.1/bin/Rscript.exe\" -e \"library\\(S7\\); cat\\(class\\(ellmer::ProviderGroq\\), ''\\\\n''\\)\")",
+      "Bash(\"C:/Program Files/R/R-4.5.1/bin/Rscript.exe\" \"C:/Users/marquexa/.claude/scripts/get_r_package_docs.R\" --source ellmer chat_request)",
+      "Bash(\"C:/Program Files/R/R-4.5.1/bin/Rscript.exe\" \"C:/Users/marquexa/.claude/scripts/get_r_package_docs.R\" --methods ellmer chat_request ProviderGroq)"
+    ]
+  }
+}

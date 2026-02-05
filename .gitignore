@@ -1,0 +1,37 @@
+# History files
+.Rhistory
+.Rapp.history
+
+# Session Data files
+.RData
+.RDataTmp
+
+# User-specific files
+.Ruserdata
+
+# RStudio files
+.Rproj.user/
+*.Rproj
+
+# OAuth2 token
+.httr-oauth
+
+# knitr and R markdown default cache directories
+*_cache/
+/cache/
+
+# Temporary files
+*.tmp
+
+# R Environment Variables
+.Renviron
+
+# Claude Code plans directory
+.claude/
+
+# data-raw directory
+data-raw/
+docs
+
+/.quarto/
+**/*.quarto_ipynb
