@@ -57,7 +57,7 @@
 <li>
 <code><a href="reference/chat_gemini_extended.html">chat_gemini_extended()</a></code> for Gemini chat plus file-based batch support.</li>
 </ul>
-<p>The package is integrated with ellmer generics like <code><a href="https://ellmer.tidyverse.org/reference/batch_chat.html" class="external-link">batch_chat()</a></code>, <code><a href="https://ellmer.tidyverse.org/reference/batch_chat.html" class="external-link">batch_chat_structured()</a></code>, and <code><a href="https://ellmer.tidyverse.org/reference/parallel_chat.html" class="external-link">parallel_chat()</a></code>.</p>
+<p>The package is fully integrated with ellmer generics like <code><a href="https://ellmer.tidyverse.org/reference/batch_chat.html" class="external-link">batch_chat()</a></code>, <code><a href="https://ellmer.tidyverse.org/reference/batch_chat.html" class="external-link">batch_chat_structured()</a></code>, <code><a href="https://ellmer.tidyverse.org/reference/parallel_chat.html" class="external-link">parallel_chat()</a></code>, etc. You will need a paid Groq developer account for Groq batch processing, and a Gemini API key for Gemini batch processing.</p>
 <div class="section level2">
 <h2 id="installation">Installation<a class="anchor" aria-label="anchor" href="#installation"></a>
 </h2>
@@ -69,10 +69,9 @@
 <div class="section level2">
 <h2 id="setup">Setup<a class="anchor" aria-label="anchor" href="#setup"></a>
 </h2>
-<p>Set one or both provider keys in <code>.Renviron</code>:</p>
-<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Sys.setenv.html" class="external-link">Sys.setenv</a></span><span class="op">(</span>GROQ_API_KEY <span class="op">=</span> <span class="st">"your-groq-key"</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/Sys.setenv.html" class="external-link">Sys.setenv</a></span><span class="op">(</span>GEMINI_API_KEY <span class="op">=</span> <span class="st">"your-gemini-key"</span><span class="op">)</span></span></code></pre></div>
+<p>Set one or both provider keys in <code>.Renviron</code> (edit with <code>usethis::edit_r_environ()</code>):</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode R"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" tabindex="-1"></a>GROQ_API_KEY<span class="ot">=</span>your<span class="sc">-</span>groq<span class="sc">-</span>key</span>
+<span id="cb2-2"><a href="#cb2-2" tabindex="-1"></a>GEMINI_API_KEY<span class="ot">=</span>your<span class="sc">-</span>gemini<span class="sc">-</span>key</span></code></pre></div>
 <p>(<code>GOOGLE_API_KEY</code> also works for Gemini.)</p>
 </div>
 <div class="section level2">
@@ -116,6 +115,7 @@
 <div class="section level3">
 <h3 id="batch-chat-groq">Batch chat (Groq)<a class="anchor" aria-label="anchor" href="#batch-chat-groq"></a>
 </h3>
+<p>Process multiple requests with cost savings using Groq’s batch API. The Groq batch API is typically blazingly fast; though completion is not guaranteed for at least 24 hours, most requests with up to 500 prompts finish in seconds.</p>
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">prompts</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
 <span>  <span class="st">"What is 2 + 2? Reply with only the number."</span>,</span>
@@ -134,9 +134,30 @@
 <span><span class="va">chats</span></span></code></pre></div>
 </div>
 <div class="section level3">
-<h3 id="batch-chat-gemini">Batch chat (Gemini)<a class="anchor" aria-label="anchor" href="#batch-chat-gemini"></a>
+<h3 id="batch-structured-output-groq">Batch structured output (Groq)<a class="anchor" aria-label="anchor" href="#batch-structured-output-groq"></a>
 </h3>
 <div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">type_answer</span> <span class="op">&lt;-</span> <span class="fu">ellmer</span><span class="fu">::</span><span class="fu"><a href="https://ellmer.tidyverse.org/reference/type_boolean.html" class="external-link">type_object</a></span><span class="op">(</span></span>
+<span>  question <span class="op">=</span> <span class="fu">ellmer</span><span class="fu">::</span><span class="fu"><a href="https://ellmer.tidyverse.org/reference/type_boolean.html" class="external-link">type_string</a></span><span class="op">(</span><span class="op">)</span>,</span>
+<span>  answer <span class="op">=</span> <span class="fu">ellmer</span><span class="fu">::</span><span class="fu"><a href="https://ellmer.tidyverse.org/reference/type_boolean.html" class="external-link">type_string</a></span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">path</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/tempfile.html" class="external-link">tempfile</a></span><span class="op">(</span>fileext <span class="op">=</span> <span class="st">".json"</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">data</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://ellmer.tidyverse.org/reference/batch_chat.html" class="external-link">batch_chat_structured</a></span><span class="op">(</span></span>
+<span>  <span class="va">chat_groq</span>,</span>
+<span>  prompts <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="st">"What is 2+2?"</span>, <span class="st">"What is the capital of France?"</span><span class="op">)</span>,</span>
+<span>  path <span class="op">=</span> <span class="va">path</span>,</span>
+<span>  type <span class="op">=</span> <span class="va">type_answer</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">data</span></span></code></pre></div>
+</div>
+<div class="section level3">
+<h3 id="batch-chat-gemini">Batch chat (Gemini)<a class="anchor" aria-label="anchor" href="#batch-chat-gemini"></a>
+</h3>
+<p>Gemini batch processing uses the <a href="https://ai.google.dev/gemini-api/docs/batch-api" class="external-link">file-based Batch API</a>. Requests are uploaded as a JSONL file, processed asynchronously at 50% of standard pricing, with a target 24-hour turnaround (many jobs complete faster). Maximum input file size is 2 GB.</p>
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">prompts</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
 <span>  <span class="st">"Reply with exactly: ok"</span>,</span>
 <span>  <span class="st">"Reply with exactly: done"</span></span>
@@ -165,7 +186,8 @@
 <div class="section level3">
 <h3 id="parallel-chat">Parallel chat<a class="anchor" aria-label="anchor" href="#parallel-chat"></a>
 </h3>
-<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<p>Process multiple prompts concurrently (synchronous):</p>
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://ellmer.tidyverse.org/reference/parallel_chat.html" class="external-link">parallel_chat</a></span><span class="op">(</span></span>
 <span>  <span class="va">chat_groq</span>,</span>
 <span>  prompts <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
@@ -187,9 +209,182 @@
 </ul>
 </div>
 <div class="section level2">
+<h2 id="groq-supported-models">Groq supported models<a class="anchor" aria-label="anchor" href="#groq-supported-models"></a>
+</h2>
+<div class="section level3">
+<h3 id="structured-outputs">Structured outputs<a class="anchor" aria-label="anchor" href="#structured-outputs"></a>
+</h3>
+<p>For strict structured outputs, Groq supports <a href="https://console.groq.com/docs/structured-outputs#supported-models" class="external-link">the following models</a>:</p>
+<p>The following models support <code>strict: true</code>, which uses constrained decoding to guarantee schema-compliant output:</p>
+<table class="table">
+<colgroup>
+<col width="50%">
+<col width="50%">
+</colgroup>
+<thead><tr class="header">
+<th>Model ID</th>
+<th>Model</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td>openai/gpt-oss-20b</td>
+<td><a href="https://console.groq.com/docs/model/openai/gpt-oss-20b" class="external-link">GPT-OSS 20B</a></td>
+</tr>
+<tr class="even">
+<td>openai/gpt-oss-120b</td>
+<td><a href="https://console.groq.com/docs/model/openai/gpt-oss-120b" class="external-link">GPT-OSS 120B</a></td>
+</tr>
+</tbody>
+</table>
+<p>The following models support Structured Outputs with <code>strict: false</code> (default), which attempts schema compliance but may occasionally error:</p>
+<table class="table">
+<colgroup>
+<col width="50%">
+<col width="50%">
+</colgroup>
+<thead><tr class="header">
+<th>Model ID</th>
+<th>Model</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td>openai/gpt-oss-20b</td>
+<td><a href="https://console.groq.com/docs/model/openai/gpt-oss-20b" class="external-link">GPT-OSS 20B</a></td>
+</tr>
+<tr class="even">
+<td>openai/gpt-oss-120b</td>
+<td><a href="https://console.groq.com/docs/model/openai/gpt-oss-120b" class="external-link">GPT-OSS 120B</a></td>
+</tr>
+<tr class="odd">
+<td>openai/gpt-oss-safeguard-20b</td>
+<td><a href="https://console.groq.com/docs/model/openai/gpt-oss-safeguard-20b" class="external-link">Safety GPT OSS 20B</a></td>
+</tr>
+<tr class="even">
+<td>moonshotai/kimi-k2-instruct-0905</td>
+<td><a href="https://console.groq.com/docs/model/moonshotai/kimi-k2-instruct-0905" class="external-link">Kimi K2 Instruct</a></td>
+</tr>
+<tr class="odd">
+<td>meta-llama/llama-4-maverick-17b-128e-instruct</td>
+<td><a href="https://console.groq.com/docs/model/meta-llama/llama-4-maverick-17b-128e-instruct" class="external-link">Llama 4 Maverick</a></td>
+</tr>
+<tr class="even">
+<td>meta-llama/llama-4-scout-17b-16e-instruct</td>
+<td><a href="https://console.groq.com/docs/model/meta-llama/llama-4-scout-17b-16e-instruct" class="external-link">Llama 4 Scout</a></td>
+</tr>
+</tbody>
+</table>
+<p>Streaming and tool use are not currently supported with Structured Outputs on Groq.</p>
+</div>
+<div class="section level3">
+<h3 id="groq-batch-processing">Groq batch processing<a class="anchor" aria-label="anchor" href="#groq-batch-processing"></a>
+</h3>
+<p>For batch processing, <a href="https://console.groq.com/docs/batch#model-availability-and-pricing" class="external-link">Groq supports the following models</a>:</p>
+<table class="table">
+<colgroup>
+<col width="50%">
+<col width="50%">
+</colgroup>
+<thead><tr class="header">
+<th>Model ID</th>
+<th>Model</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td>openai/gpt-oss-20b</td>
+<td><a href="https://console.groq.com/docs/model/openai/gpt-oss-20b" class="external-link">GPT-OSS 20B</a></td>
+</tr>
+<tr class="even">
+<td>openai/gpt-oss-120b</td>
+<td><a href="https://console.groq.com/docs/model/openai/gpt-oss-120b" class="external-link">GPT-OSS 120B</a></td>
+</tr>
+<tr class="odd">
+<td>meta-llama/llama-4-maverick-17b-128e-instruct</td>
+<td><a href="https://console.groq.com/docs/model/meta-llama/llama-4-maverick-17b-128e-instruct" class="external-link">Llama 4 Maverick</a></td>
+</tr>
+<tr class="even">
+<td>meta-llama/llama-4-scout-17b-16e-instruct</td>
+<td><a href="https://console.groq.com/docs/model/meta-llama/llama-4-scout-17b-16e-instruct" class="external-link">Llama 4 Scout</a></td>
+</tr>
+<tr class="odd">
+<td>llama-3.3-70b-versatile</td>
+<td><a href="https://console.groq.com/docs/model/llama-3.3-70b-versatile" class="external-link">Llama 3.3 70B</a></td>
+</tr>
+<tr class="even">
+<td>llama-3.1-8b-instant</td>
+<td><a href="https://console.groq.com/docs/model/llama-3.1-8b-instant" class="external-link">Llama 3.1 8B Instant</a></td>
+</tr>
+<tr class="odd">
+<td>meta-llama/llama-guard-4-12b</td>
+<td><a href="https://console.groq.com/docs/model/meta-llama/llama-guard-4-12b" class="external-link">Llama Guard 4 12B</a></td>
+</tr>
+</tbody>
+</table>
+<p>Pricing is at a 50% cost discount compared to <a href="https://groq.com/pricing" class="external-link">synchronous API pricing</a>. The batch discount does not stack with <a href="https://console.groq.com/docs/prompt-caching" class="external-link">prompt caching</a> discounts; all batch tokens are billed at the 50% batch rate regardless of cache status.</p>
+</div>
+</div>
+<div class="section level2">
+<h2 id="gemini-batch-processing">Gemini batch processing<a class="anchor" aria-label="anchor" href="#gemini-batch-processing"></a>
+</h2>
+<p>Gemini batch processing uses the <a href="https://ai.google.dev/gemini-api/docs/batch-api" class="external-link">file-based Batch API</a>:</p>
+<ul>
+<li>Requests are uploaded as a JSONL input file, then submitted via <code>batchGenerateContent</code>.</li>
+<li>Processing is asynchronous at <strong>50% of standard pricing</strong> with a target 24-hour turnaround.</li>
+<li>Maximum input file size: <strong>2 GB</strong>.</li>
+<li>Batch jobs expire after <strong>48 hours</strong> if not completed.</li>
+<li>Context caching is supported for batch requests (cache hits are billed at standard cache pricing).</li>
+</ul>
+<p>Use <code><a href="reference/chat_gemini_extended.html">chat_gemini_extended()</a></code> to create a Gemini chat object with batch support, then pass it to <code><a href="https://ellmer.tidyverse.org/reference/batch_chat.html" class="external-link">batch_chat()</a></code> or <code><a href="https://ellmer.tidyverse.org/reference/batch_chat.html" class="external-link">batch_chat_structured()</a></code>. Use <code><a href="https://ellmer.tidyverse.org/reference/batch_chat.html" class="external-link">batch_chat_completed()</a></code> to check whether a previously submitted batch has finished.</p>
+<p>The following <a href="https://ai.google.dev/gemini-api/docs/models" class="external-link">Gemini models</a> support the Batch API:</p>
+<table class="table">
+<thead><tr class="header">
+<th>Model ID</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td>gemini-3-pro-preview</td>
+</tr>
+<tr class="even">
+<td>gemini-3-pro-image-preview</td>
+</tr>
+<tr class="odd">
+<td>gemini-3-flash-preview</td>
+</tr>
+<tr class="even">
+<td>gemini-2.5-flash</td>
+</tr>
+<tr class="odd">
+<td>gemini-2.5-flash-preview-09-2025</td>
+</tr>
+<tr class="even">
+<td>gemini-2.5-flash-image</td>
+</tr>
+<tr class="odd">
+<td>gemini-2.5-flash-lite</td>
+</tr>
+<tr class="even">
+<td>gemini-2.5-flash-lite-preview-09-2025</td>
+</tr>
+<tr class="odd">
+<td>gemini-2.5-pro</td>
+</tr>
+<tr class="even">
+<td>gemini-2.5-pro-preview-tts</td>
+</tr>
+<tr class="odd">
+<td>gemini-2.0-flash</td>
+</tr>
+<tr class="even">
+<td>gemini-2.0-flash-lite</td>
+</tr>
+</tbody>
+</table>
+<p>Use <code><a href="https://ellmer.tidyverse.org/reference/chat_google_gemini.html" class="external-link">ellmer::models_google_gemini()</a></code> for a full model listing.</p>
+</div>
+<div class="section level2">
 <h2 id="license">License<a class="anchor" aria-label="anchor" href="#license"></a>
 </h2>
 <p>MIT</p>
+<p>This package was mostly coded by Claude Code, though everything was reviewed by Xavier Marquez, including all live tests.</p>
 </div>
 </div>
   </main><aside class="col-md-3"><div class="links">
