@@ -94,10 +94,17 @@
 <li>Submit <code>models/{model}:batchGenerateContent</code>
 </li>
 <li>Poll batch operation</li>
-<li>Download output file via <code>files/*:download</code>
-</li>
+<li>Download output file via <code>files/*:download</code> (requires <code>?alt=media</code> query parameter)</li>
 </ul></li>
-<li>Batch line format is normalized defensively to handle both:
+<li>
+<strong>JSONL format is stricter than the REST API.</strong> The batch JSONL parser does NOT auto-convert like the REST endpoint:
+<ul><li>Each line must be <code>{"key": "string", "request": {GenerateContentRequest}}</code>
+</li>
+<li>All field names must be <strong>snake_case</strong> (protobuf field names), not camelCase. <code>ellmer::chat_body()</code> returns camelCase (<code>generationConfig</code>, <code>systemInstruction</code>, etc.) so <code>gemini_prepare_batch_body()</code> converts them.</li>
+<li>Structured output field is <code>response_json_schema</code>, NOT <code>response_schema</code> (REST API accepts either; batch parser only accepts the newer name).</li>
+<li>Empty <code>system_instruction</code> blocks (e.g. <code>{"parts": {"text": ""}}</code>) are rejected; <code>gemini_prepare_batch_body()</code> strips these.</li>
+</ul></li>
+<li>Batch output line format is normalized defensively to handle both:
 <ul><li>Plain <code>GenerateContentResponse</code> lines</li>
 <li>Wrapped <code>response/error/status</code> variants</li>
 </ul></li>
