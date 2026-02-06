@@ -56,7 +56,7 @@
 <li>
 <code>ProviderGeminiExtended</code> extends <code>ellmer::ProviderGoogleGemini</code>
 </li>
-</ul><p>Method registration uses <code><a href="https://rconsortium.github.io/S7/reference/method.html" class="external-link">S7::method()</a></code> calls inside <code>register_groq_methods()</code> and <code>register_gemini_methods()</code>, followed by <code><a href="https://rconsortium.github.io/S7/reference/methods_register.html" class="external-link">S7::methods_register()</a></code>.</p>
+</ul><p>Method registration uses <code><a href="https://rconsortium.github.io/S7/reference/method.html" class="external-link">S7::method()</a></code> calls inside <code>register_groq_methods()</code> and <code>register_gemini_methods()</code>, followed by <code><a href="https://rconsortium.github.io/S7/reference/methods_register.html" class="external-link">S7::methods_register()</a></code>. Each provider’s class creation and method registration is wrapped in its own <code>tryCatch(suppressMessages(...))</code> block so that a failure in one provider does not prevent the other from initializing.</p>
 </div>
 <div class="section level3">
 <h3 id="key-files">Key Files<a class="anchor" aria-label="anchor" href="#key-files"></a></h3>
@@ -101,7 +101,9 @@
 <ul><li>Plain <code>GenerateContentResponse</code> lines</li>
 <li>Wrapped <code>response/error/status</code> variants</li>
 </ul></li>
-<li>Batch method registration is done in <code>.onLoad</code>, with a defensive re-registration in <code><a href="reference/chat_gemini_extended.html">chat_gemini_extended()</a></code> to support <code>devtools::load_all()</code> workflows</li>
+<li>Batch method registration is done in <code>.onLoad</code>, with a defensive re-registration in <code><a href="reference/chat_gemini_extended.html">chat_gemini_extended()</a></code> to support <code>devtools::load_all()</code> workflows.</li>
+<li>
+<code>batch_retrieve</code> checks multiple paths for <code>responsesFile</code> (<code>response$output$responsesFile</code>, <code>response$responsesFile</code>, <code>metadata$output$responsesFile</code>) because the Gemini API response structure varies between API versions.</li>
 <li>50% cost discount, target 24-hour turnaround, 2 GB max file size, 48-hour expiry</li>
 <li>Structured output via <code><a href="https://ellmer.tidyverse.org/reference/batch_chat.html" class="external-link">batch_chat_structured()</a></code> may not be supported on all Gemini models (HTTP 400); integration tests handle this gracefully</li>
 </ul></div>
@@ -151,8 +153,14 @@
 <code>ProviderGeminiExtended</code> is not exported (by design; users should use <code><a href="reference/chat_gemini_extended.html">chat_gemini_extended()</a></code>).</li>
 <li>Groq structured outputs do not support streaming or tool use.</li>
 <li>Gemini batch jobs can remain queued for extended periods; integration tests handle this gracefully.</li>
-<li>The <code>.onLoad</code> error handler silently defers initialization failures (needed for documentation builds); users see informative errors when they try to use provider functions.</li>
+<li>The <code>.onLoad</code> error handlers silently defer initialization failures (needed for documentation builds); users see informative errors when they try to use provider functions.</li>
 <li>Heavy reliance on <code>asNamespace("ellmer")</code> for internal functions – fragile if ellmer renames internals.</li>
+<li>
+<strong>S7 segfault on Windows R 4.5.1:</strong> Creating S7 subclasses of ellmer providers (<code>S7::new_class(parent = ProviderGoogleGemini)</code>) segfaults when called outside <code>.onLoad</code> context. This also affects <code>S7::method&lt;-</code> and <code>register_gemini_methods()</code> post-load. The classes work correctly when created during <code>.onLoad</code>. This is why <code><a href="reference/chat_gemini_extended.html">chat_gemini_extended()</a></code> has a defensive <code>register_gemini_methods()</code> call, and why the <code>has_batch_support</code> test also re-registers defensively.</li>
+<li>
+<strong><code>S7::method&lt;-</code> prints “Overwriting method” messages</strong> that R CMD check treats as unsuppressable startup messages. All registration calls must be wrapped in <code><a href="https://rdrr.io/r/base/message.html" class="external-link">suppressMessages()</a></code>.</li>
+<li>
+<code>lifecycle</code> is in Suggests, not Imports (only used at roxygen doc-gen time for badge macros).</li>
 </ul></div>
 <div class="section level2">
 <h2 id="dependencies">Dependencies<a class="anchor" aria-label="anchor" href="#dependencies"></a></h2>

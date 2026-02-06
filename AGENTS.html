@@ -138,8 +138,12 @@
 <li>Groq structured outputs: no streaming or tool use support.</li>
 <li>Gemini batch jobs can remain queued for extended periods.</li>
 <li>
-<code>.onLoad</code> silently defers initialization failures (needed for doc builds).</li>
+<code>.onLoad</code> uses separate <code>tryCatch(suppressMessages(...))</code> blocks per provider; one failing doesn’t block the other.</li>
 <li>Heavy reliance on <code>asNamespace("ellmer")</code> internals – fragile if ellmer changes.</li>
+<li>S7 subclassing segfaults on Windows R 4.5.1 outside <code>.onLoad</code>; defensive re-registration needed.</li>
+<li>
+<code>S7::method&lt;-</code> prints “Overwriting method” messages; all registration wrapped in <code><a href="https://rdrr.io/r/base/message.html" class="external-link">suppressMessages()</a></code>.</li>
+<li>Gemini <code>batch_retrieve</code> checks multiple paths for <code>responsesFile</code> (API structure varies).</li>
 <li>
 <code>lifecycle</code> in Suggests; used only for roxygen badge macros at doc-gen time.</li>
 </ul></div>

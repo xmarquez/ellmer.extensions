@@ -29,6 +29,9 @@ Method registration uses
 calls inside `register_groq_methods()` and `register_gemini_methods()`,
 followed by
 [`S7::methods_register()`](https://rconsortium.github.io/S7/reference/methods_register.html).
+Each provider’s class creation and method registration is wrapped in its
+own `tryCatch(suppressMessages(...))` block so that a failure in one
+provider does not prevent the other from initializing.
 
 ### Key Files
 
@@ -66,7 +69,11 @@ followed by
 - Batch method registration is done in `.onLoad`, with a defensive
   re-registration in
   [`chat_gemini_extended()`](https://xmarquez.github.io/ellmer.extensions/reference/chat_gemini_extended.md)
-  to support `devtools::load_all()` workflows
+  to support `devtools::load_all()` workflows.
+- `batch_retrieve` checks multiple paths for `responsesFile`
+  (`response$output$responsesFile`, `response$responsesFile`,
+  `metadata$output$responsesFile`) because the Gemini API response
+  structure varies between API versions.
 - 50% cost discount, target 24-hour turnaround, 2 GB max file size,
   48-hour expiry
 - Structured output via
@@ -124,11 +131,25 @@ Run from package root:
 - Groq structured outputs do not support streaming or tool use.
 - Gemini batch jobs can remain queued for extended periods; integration
   tests handle this gracefully.
-- The `.onLoad` error handler silently defers initialization failures
+- The `.onLoad` error handlers silently defer initialization failures
   (needed for documentation builds); users see informative errors when
   they try to use provider functions.
 - Heavy reliance on `asNamespace("ellmer")` for internal functions –
   fragile if ellmer renames internals.
+- **S7 segfault on Windows R 4.5.1:** Creating S7 subclasses of ellmer
+  providers (`S7::new_class(parent = ProviderGoogleGemini)`) segfaults
+  when called outside `.onLoad` context. This also affects
+  `S7::method<-` and `register_gemini_methods()` post-load. The classes
+  work correctly when created during `.onLoad`. This is why
+  [`chat_gemini_extended()`](https://xmarquez.github.io/ellmer.extensions/reference/chat_gemini_extended.md)
+  has a defensive `register_gemini_methods()` call, and why the
+  `has_batch_support` test also re-registers defensively.
+- **`S7::method<-` prints “Overwriting method” messages** that R CMD
+  check treats as unsuppressable startup messages. All registration
+  calls must be wrapped in
+  [`suppressMessages()`](https://rdrr.io/r/base/message.html).
+- `lifecycle` is in Suggests, not Imports (only used at roxygen doc-gen
+  time for badge macros).
 
 ## Dependencies
 

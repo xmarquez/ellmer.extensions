@@ -88,9 +88,16 @@ Run from package root:
   [`chat_gemini_extended()`](https://xmarquez.github.io/ellmer.extensions/reference/chat_gemini_extended.md)).
 - Groq structured outputs: no streaming or tool use support.
 - Gemini batch jobs can remain queued for extended periods.
-- `.onLoad` silently defers initialization failures (needed for doc
-  builds).
+- `.onLoad` uses separate `tryCatch(suppressMessages(...))` blocks per
+  provider; one failing doesn’t block the other.
 - Heavy reliance on `asNamespace("ellmer")` internals – fragile if
   ellmer changes.
+- S7 subclassing segfaults on Windows R 4.5.1 outside `.onLoad`;
+  defensive re-registration needed.
+- `S7::method<-` prints “Overwriting method” messages; all registration
+  wrapped in
+  [`suppressMessages()`](https://rdrr.io/r/base/message.html).
+- Gemini `batch_retrieve` checks multiple paths for `responsesFile` (API
+  structure varies).
 - `lifecycle` in Suggests; used only for roxygen badge macros at doc-gen
   time.
