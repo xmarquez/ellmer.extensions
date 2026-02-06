@@ -42,7 +42,8 @@
 
 - Groq: `GROQ_API_KEY`
 - Gemini: `GEMINI_API_KEY` (or `GOOGLE_API_KEY`)
-- `.Renviron` is intentionally present in this repo by request.
+- Keep `.Renviron` local only; do not commit it.
+- Commit `.Renviron.example` with placeholder values only.
 
 ## Standard Workflow
 
@@ -52,6 +53,28 @@ Run from package root:
 2.  `Rscript -e "devtools::test()"`
 3.  `Rscript -e "devtools::lint()"` (run at end)
 4.  `Rscript -e "devtools::check()"`
+
+## Repo Hygiene
+
+- If `.Renviron` is accidentally committed, remove it from tracking
+  immediately:
+  - `git rm --cached .Renviron`
+  - add/update `.Renviron.example`
+- If a secret reached commit history, purge history before any push:
+  - Rewrite commits to remove `.Renviron`
+  - Delete `refs/original/*`
+  - Expire reflogs and run GC
+  - Verify:
+    - `git log --all -- .Renviron` returns no commits
+    - `git rev-list --all --objects | rg "\\.Renviron"` only shows
+      `.Renviron.example`
+- If a secret is ever pushed or shared, rotate keys immediately.
+
+## Publishing Setup
+
+- Initialize and push GitHub repo: `usethis::use_github()`
+- Configure pkgdown pages workflow:
+  `usethis::use_pkgdown_github_pages()`
 
 ## Testing Notes
 
