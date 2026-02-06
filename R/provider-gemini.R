@@ -225,7 +225,10 @@ register_gemini_methods <- function() {
     }
 
     batch_resource <- batch$response %||% batch$metadata
-    responses_file <- batch_resource$output$responsesFile %||% NULL
+    responses_file <- batch_resource$output$responsesFile %||%
+      batch_resource$responsesFile %||%
+      metadata$output$responsesFile %||%
+      NULL
 
     if (is.null(responses_file) || !nzchar(responses_file)) {
       cli::cli_abort("Gemini batch completed but no output file was returned.")

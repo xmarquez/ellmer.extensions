@@ -65,7 +65,7 @@ chat_gemini_extended <- function(
 
   # Defensive re-registration for devtools::load_all() sessions where .onLoad
   # may not have attached this subclass method table yet.
-  register_gemini_methods()
+  suppressMessages(register_gemini_methods())
 
   provider <- ProviderGeminiExtended(
     name = "Google/Gemini",

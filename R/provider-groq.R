@@ -335,39 +335,33 @@ register_groq_methods <- function() {
 
 # Initialize the class after ellmer is loaded
 .onLoad <- function(libname, pkgname) {
-  tryCatch({
-    # Get parent provider classes from ellmer
-    # ProviderOpenAI uses the Responses API format which Groq doesn't support
-    # ProviderOpenAICompatible uses the Chat Completions API format
-    ellmer_ns <- asNamespace("ellmer")
-    ProviderOpenAICompatible <- ellmer_ns$ProviderOpenAICompatible
-    ProviderGoogleGemini <- ellmer_ns$ProviderGoogleGemini
+  ellmer_ns <- tryCatch(asNamespace("ellmer"), error = function(e) NULL)
+  if (is.null(ellmer_ns)) return(invisible())
 
-    # Create ProviderGroqDeveloper class extending ProviderOpenAICompatible
+  # Create Groq provider class and register methods
+  tryCatch(suppressMessages({
+    ProviderOpenAICompatible <- ellmer_ns$ProviderOpenAICompatible
     ProviderGroqDeveloper <<- S7::new_class(
       name = "ProviderGroqDeveloper",
       package = "ellmer.extensions",
       parent = ProviderOpenAICompatible
     )
+    register_groq_methods()
+  }), error = function(e) NULL)
 
-    # Create ProviderGeminiExtended class extending ProviderGoogleGemini
+  # Create Gemini provider class and register methods
+  tryCatch(suppressMessages({
+    ProviderGoogleGemini <- ellmer_ns$ProviderGoogleGemini
     ProviderGeminiExtended <<- S7::new_class(
       name = "ProviderGeminiExtended",
       package = "ellmer.extensions",
       parent = ProviderGoogleGemini
     )
-
-    # Register method overrides
-    register_groq_methods()
     register_gemini_methods()
+  }), error = function(e) NULL)
 
-    # Register all S7 methods with ellmer
-    S7::methods_register()
-  }, error = function(e) {
-    # Silently deferred during documentation builds; interactive users will
-    # see an informative error when they try to use the provider functions.
-    NULL
-  })
+  # Finalize S7 method registration for cross-package dispatch
+  tryCatch(suppressMessages(S7::methods_register()), error = function(e) NULL)
 }
 
 # Batch support is implemented via Groq's Batch API --------------------------

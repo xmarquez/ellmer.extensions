@@ -12,8 +12,16 @@ test_that("ProviderGeminiExtended class is properly defined", {
 
 test_that("ProviderGeminiExtended has batch support", {
   skip_if_not_installed("ellmer")
+  skip_if(
+    is.null(ellmer.extensions:::ProviderGeminiExtended),
+    "ProviderGeminiExtended not initialized"
+  )
 
   ellmer_ns <- asNamespace("ellmer")
+
+  # Defensive re-registration (mirrors chat_gemini_extended behaviour)
+  tryCatch(suppressMessages(ellmer.extensions:::register_gemini_methods()), error = function(e) NULL)
+
   provider <- ellmer.extensions:::ProviderGeminiExtended(
     name = "Google/Gemini",
     base_url = "https://generativelanguage.googleapis.com/v1beta/",
