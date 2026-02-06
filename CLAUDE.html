@@ -87,6 +87,16 @@
 <li>Batch processing at 50% cost discount, completion window 24h (usually seconds)</li>
 </ul></div>
 <div class="section level3">
+<h3 id="url-path-construction">URL Path Construction<a class="anchor" aria-label="anchor" href="#url-path-construction"></a></h3>
+<p>Use <strong>bare segment names</strong> in <code><a href="https://httr2.r-lib.org/reference/req_url.html" class="external-link">httr2::req_url_path_append()</a></code> — no leading slashes. Leading slashes produce double-slash paths (e.g. <code>//files//id//content</code>) that may break on strict routers.</p>
+<div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># GOOD</span></span>
+<span><span class="fu">req_url_path_append</span><span class="op">(</span><span class="va">req</span>, <span class="st">"files"</span>, <span class="va">id</span>, <span class="st">"content"</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># BAD — produces double slashes</span></span>
+<span><span class="fu">req_url_path_append</span><span class="op">(</span><span class="va">req</span>, <span class="st">"/files/"</span>, <span class="va">id</span>, <span class="st">"/content"</span><span class="op">)</span></span></code></pre></div>
+</div>
+<div class="section level3">
 <h3 id="gemini-batch-design-notes">Gemini Batch Design Notes<a class="anchor" aria-label="anchor" href="#gemini-batch-design-notes"></a></h3>
 <ul><li>Uses Gemini Batch API file mode:
 <ul><li>Upload JSONL input file via <code>google_upload_init</code> / <code>google_upload_send</code> / <code>google_upload_wait</code>
@@ -100,7 +110,7 @@
 <strong>JSONL format is stricter than the REST API.</strong> The batch JSONL parser does NOT auto-convert like the REST endpoint:
 <ul><li>Each line must be <code>{"key": "string", "request": {GenerateContentRequest}}</code>
 </li>
-<li>All field names must be <strong>snake_case</strong> (protobuf field names), not camelCase. <code>ellmer::chat_body()</code> returns camelCase (<code>generationConfig</code>, <code>systemInstruction</code>, etc.) so <code>gemini_prepare_batch_body()</code> converts them.</li>
+<li>All field names must be <strong>snake_case</strong> (protobuf field names), not camelCase. <code>ellmer::chat_body()</code> returns camelCase (<code>generationConfig</code>, <code>systemInstruction</code>, etc.) so <code>gemini_prepare_batch_body()</code> converts them. <strong>Exception:</strong> user-defined schema property names are preserved as-is (the schema subtree is saved before conversion and restored after).</li>
 <li>Structured output field is <code>response_json_schema</code>, NOT <code>response_schema</code> (REST API accepts either; batch parser only accepts the newer name).</li>
 <li>Empty <code>system_instruction</code> blocks (e.g. <code>{"parts": {"text": ""}}</code>) are rejected; <code>gemini_prepare_batch_body()</code> strips these.</li>
 </ul></li>

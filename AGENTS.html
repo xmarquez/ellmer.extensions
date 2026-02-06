@@ -110,7 +110,7 @@
 <h2 id="testing-notes">Testing Notes<a class="anchor" aria-label="anchor" href="#testing-notes"></a></h2>
 <ul><li>Groq unit tests run offline with dummy credentials.</li>
 <li>Groq integration tests require <code>GROQ_API_KEY</code>.</li>
-<li>Gemini unit tests run offline; cover helper functions (<code>gemini_extract_index</code>, <code>gemini_json_fallback</code>, <code>gemini_normalize_result</code>).</li>
+<li>Gemini unit tests run offline; cover helper functions (<code>gemini_extract_index</code>, <code>gemini_json_fallback</code>, <code>gemini_normalize_result</code>, <code>gemini_prepare_batch_body</code>).</li>
 <li>Gemini integration tests require <code>GEMINI_API_KEY</code> or <code>GOOGLE_API_KEY</code>; poll with bounded timeout and skip if batch does not finish.</li>
 <li>Gemini <code>batch_chat_structured</code> may return HTTP 400 for some models; test skips gracefully.</li>
 <li>Linting via <code>.lintr</code>: <code>line_length_linter(120)</code>, S7 PascalCase names suppressed.</li>
