@@ -53,7 +53,7 @@ Run from package root:
 
 - Groq unit tests run offline with dummy credentials.
 - Groq integration tests require `GROQ_API_KEY`.
-- Gemini unit tests run offline; cover helper functions (`gemini_extract_index`, `gemini_json_fallback`, `gemini_normalize_result`).
+- Gemini unit tests run offline; cover helper functions (`gemini_extract_index`, `gemini_json_fallback`, `gemini_normalize_result`, `gemini_prepare_batch_body`).
 - Gemini integration tests require `GEMINI_API_KEY` or `GOOGLE_API_KEY`; poll with bounded timeout and skip if batch does not finish.
 - Gemini `batch_chat_structured` may return HTTP 400 for some models; test skips gracefully.
 - Linting via `.lintr`: `line_length_linter(120)`, S7 PascalCase names suppressed.

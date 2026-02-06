@@ -37,6 +37,18 @@ Method registration uses `S7::method()` calls inside `register_groq_methods()` a
 - Batch API: upload JSONL -> create batch job -> poll -> download results
 - Batch processing at 50% cost discount, completion window 24h (usually seconds)
 
+### URL Path Construction
+
+Use **bare segment names** in `httr2::req_url_path_append()` — no leading slashes. Leading slashes produce double-slash paths (e.g. `//files//id//content`) that may break on strict routers.
+
+```r
+# GOOD
+req_url_path_append(req, "files", id, "content")
+
+# BAD — produces double slashes
+req_url_path_append(req, "/files/", id, "/content")
+```
+
 ### Gemini Batch Design Notes
 
 - Uses Gemini Batch API file mode:
@@ -46,7 +58,7 @@ Method registration uses `S7::method()` calls inside `register_groq_methods()` a
   - Download output file via `files/*:download` (requires `?alt=media` query parameter)
 - **JSONL format is stricter than the REST API.** The batch JSONL parser does NOT auto-convert like the REST endpoint:
   - Each line must be `{"key": "string", "request": {GenerateContentRequest}}`
-  - All field names must be **snake_case** (protobuf field names), not camelCase. `ellmer::chat_body()` returns camelCase (`generationConfig`, `systemInstruction`, etc.) so `gemini_prepare_batch_body()` converts them.
+  - All field names must be **snake_case** (protobuf field names), not camelCase. `ellmer::chat_body()` returns camelCase (`generationConfig`, `systemInstruction`, etc.) so `gemini_prepare_batch_body()` converts them. **Exception:** user-defined schema property names are preserved as-is (the schema subtree is saved before conversion and restored after).
   - Structured output field is `response_json_schema`, NOT `response_schema` (REST API accepts either; batch parser only accepts the newer name).
   - Empty `system_instruction` blocks (e.g. `{"parts": {"text": ""}}`) are rejected; `gemini_prepare_batch_body()` strips these.
 - Batch output line format is normalized defensively to handle both:
