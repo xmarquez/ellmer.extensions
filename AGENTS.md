@@ -3,47 +3,48 @@
 ## Package Overview
 
 - Package name: `ellmer.extensions`
-- Purpose: Extend `ellmer` with:
+- Purpose: Extend [ellmer](https://github.com/tidyverse/ellmer) with:
   - Groq provider support (`chat_groq_developer`,
     `ProviderGroqDeveloper`)
   - Gemini file-based batch support (`chat_gemini_extended`,
     `ProviderGeminiExtended`)
-- This repository was cloned from `groqDeveloper` and then adapted with
-  package identity updates plus Gemini batch functionality.
+- Origin: Cloned from `groqDeveloper` and adapted with Gemini batch
+  functionality.
+- See `CLAUDE.md` for full architecture and design details.
 
 ## Key Files
 
-- `R/chat-groq.R`: Groq chat constructor and Groq utilities.
-- `R/provider-groq.R`: Groq provider methods, S7 registrations,
-  `.onLoad`.
-- `R/chat-gemini.R`: Gemini chat constructor (`chat_gemini_extended`).
-- `R/provider-gemini.R`: Gemini batch
-  upload/submit/poll/status/retrieve/result methods.
-- `tests/testthat/test-api-integration.R`: Groq live integration tests.
-- `tests/testthat/test-gemini-batch-integration.R`: Gemini live
-  integration tests.
+| File                                             | Purpose                                                                                                                            |
+|--------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------|
+| `R/chat-groq.R`                                  | Groq chat constructor, [`models_groq()`](https://xmarquez.github.io/ellmer.extensions/reference/models_groq.md), utility functions |
+| `R/provider-groq.R`                              | `ProviderGroqDeveloper` class, Groq batch/schema methods, `.onLoad`                                                                |
+| `R/chat-gemini.R`                                | Gemini chat constructor (`chat_gemini_extended`)                                                                                   |
+| `R/provider-gemini.R`                            | `ProviderGeminiExtended` class, Gemini batch methods                                                                               |
+| `R/reexports.R`                                  | Re-exports ellmer generics (`batch_chat`, `parallel_chat`, etc.)                                                                   |
+| `R/ellmer.extensions-package.R`                  | Package-level docs, `@import S7`, `@importFrom rlang %||%`                                                                         |
+| `tests/testthat/test-provider-groq.R`            | Groq offline unit tests                                                                                                            |
+| `tests/testthat/test-provider-gemini.R`          | Gemini offline unit tests                                                                                                          |
+| `tests/testthat/test-api-integration.R`          | Groq live integration tests                                                                                                        |
+| `tests/testthat/test-gemini-batch-integration.R` | Gemini live integration tests                                                                                                      |
 
-## Gemini Batch Design Notes
+## Architecture
 
-- Uses Gemini Batch API file mode:
-  - Upload JSONL input file
-  - Submit `models/{model}:batchGenerateContent`
-  - Poll batch operation (`batches/...`)
-  - Download output file via `files/*:download`
-- Batch line format is normalized defensively to handle both:
-  - Plain `GenerateContentResponse` lines
-  - Wrapped `response/error/status` variants
-- Batch method registration is done in `.onLoad`, with a defensive
-  re-registration in
-  [`chat_gemini_extended()`](https://xmarquez.github.io/ellmer.extensions/reference/chat_gemini_extended.md)
-  to support `devtools::load_all()` workflows.
+- S7 provider classes created dynamically in `.onLoad` (extend ellmer
+  parent classes)
+- `ProviderGroqDeveloper` extends `ProviderOpenAICompatible` (Chat
+  Completions format)
+- `ProviderGeminiExtended` extends `ProviderGoogleGemini`
+- Both use `register_*_methods()` +
+  [`S7::methods_register()`](https://rconsortium.github.io/S7/reference/methods_register.html)
+- ellmer internals accessed via `asNamespace("ellmer")` throughout
+- `%||%` imported from `rlang`
 
 ## Environment Variables
 
 - Groq: `GROQ_API_KEY`
 - Gemini: `GEMINI_API_KEY` (or `GOOGLE_API_KEY`)
 - Keep `.Renviron` local only; do not commit it.
-- Commit `.Renviron.example` with placeholder values only.
+- `.Renviron.example` contains placeholder values only.
 
 ## Standard Workflow
 
@@ -54,32 +55,42 @@ Run from package root:
 3.  `Rscript -e "devtools::lint()"` (run at end)
 4.  `Rscript -e "devtools::check()"`
 
-## Repo Hygiene
-
-- If `.Renviron` is accidentally committed, remove it from tracking
-  immediately:
-  - `git rm --cached .Renviron`
-  - add/update `.Renviron.example`
-- If a secret reached commit history, purge history before any push:
-  - Rewrite commits to remove `.Renviron`
-  - Delete `refs/original/*`
-  - Expire reflogs and run GC
-  - Verify:
-    - `git log --all -- .Renviron` returns no commits
-    - `git rev-list --all --objects | rg "\\.Renviron"` only shows
-      `.Renviron.example`
-- If a secret is ever pushed or shared, rotate keys immediately.
-
-## Publishing Setup
-
-- Initialize and push GitHub repo: `usethis::use_github()`
-- Configure pkgdown pages workflow:
-  `usethis::use_pkgdown_github_pages()`
-
 ## Testing Notes
 
-- Gemini batch integration can remain queued for extended periods.
-- `test-gemini-batch-integration.R` polls with a bounded timeout and
-  skips if the batch does not finish in time.
-- A skip in that test is expected behavior under queue pressure;
-  build/check should still pass.
+- Groq unit tests run offline with dummy credentials.
+- Groq integration tests require `GROQ_API_KEY`.
+- Gemini unit tests run offline; cover helper functions
+  (`gemini_extract_index`, `gemini_json_fallback`,
+  `gemini_normalize_result`).
+- Gemini integration tests require `GEMINI_API_KEY` or `GOOGLE_API_KEY`;
+  poll with bounded timeout and skip if batch does not finish.
+- Gemini `batch_chat_structured` may return HTTP 400 for some models;
+  test skips gracefully.
+- Linting via `.lintr`: `line_length_linter(120)`, S7 PascalCase names
+  suppressed.
+
+## CI
+
+- R-CMD-check: `.github/workflows/R-CMD-check.yaml` (push to
+  main/master, PRs)
+- pkgdown: `.github/workflows/pkgdown.yaml`
+
+## Repo Hygiene
+
+- `.Renviron` is gitignored and purged from git history.
+- `data-raw/` is gitignored (development scripts only).
+- `docs/` is gitignored (built by CI via pkgdown).
+- If a secret is ever pushed or shared, rotate keys immediately.
+
+## Known Issues
+
+- `ProviderGeminiExtended` not exported by design (use
+  [`chat_gemini_extended()`](https://xmarquez.github.io/ellmer.extensions/reference/chat_gemini_extended.md)).
+- Groq structured outputs: no streaming or tool use support.
+- Gemini batch jobs can remain queued for extended periods.
+- `.onLoad` silently defers initialization failures (needed for doc
+  builds).
+- Heavy reliance on `asNamespace("ellmer")` internals – fragile if
+  ellmer changes.
+- `lifecycle` in Suggests; used only for roxygen badge macros at doc-gen
+  time.

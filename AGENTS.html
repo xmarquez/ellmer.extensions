@@ -37,42 +37,56 @@
 <h2 id="package-overview">Package Overview<a class="anchor" aria-label="anchor" href="#package-overview"></a></h2>
 <ul><li>Package name: <code>ellmer.extensions</code>
 </li>
-<li>Purpose: Extend <code>ellmer</code> with:
+<li>Purpose: Extend <a href="https://github.com/tidyverse/ellmer" class="external-link">ellmer</a> with:
 <ul><li>Groq provider support (<code>chat_groq_developer</code>, <code>ProviderGroqDeveloper</code>)</li>
 <li>Gemini file-based batch support (<code>chat_gemini_extended</code>, <code>ProviderGeminiExtended</code>)</li>
 </ul></li>
-<li>This repository was cloned from <code>groqDeveloper</code> and then adapted with package identity updates plus Gemini batch functionality.</li>
+<li>Origin: Cloned from <code>groqDeveloper</code> and adapted with Gemini batch functionality.</li>
+<li>See <code>CLAUDE.md</code> for full architecture and design details.</li>
 </ul></div>
 <div class="section level2">
 <h2 id="key-files">Key Files<a class="anchor" aria-label="anchor" href="#key-files"></a></h2>
-<ul><li>
-<code>R/chat-groq.R</code>: Groq chat constructor and Groq utilities.</li>
-<li>
-<code>R/provider-groq.R</code>: Groq provider methods, S7 registrations, <code>.onLoad</code>.</li>
-<li>
-<code>R/chat-gemini.R</code>: Gemini chat constructor (<code>chat_gemini_extended</code>).</li>
-<li>
-<code>R/provider-gemini.R</code>: Gemini batch upload/submit/poll/status/retrieve/result methods.</li>
-<li>
-<code>tests/testthat/test-api-integration.R</code>: Groq live integration tests.</li>
-<li>
-<code>tests/testthat/test-gemini-batch-integration.R</code>: Gemini live integration tests.</li>
-</ul></div>
+<table class="table"><colgroup><col width="40%"><col width="60%"></colgroup><thead><tr class="header"><th>File</th>
+<th>Purpose</th>
+</tr></thead><tbody><tr class="odd"><td><code>R/chat-groq.R</code></td>
+<td>Groq chat constructor, <code><a href="reference/models_groq.html">models_groq()</a></code>, utility functions</td>
+</tr><tr class="even"><td><code>R/provider-groq.R</code></td>
+<td>
+<code>ProviderGroqDeveloper</code> class, Groq batch/schema methods, <code>.onLoad</code>
+</td>
+</tr><tr class="odd"><td><code>R/chat-gemini.R</code></td>
+<td>Gemini chat constructor (<code>chat_gemini_extended</code>)</td>
+</tr><tr class="even"><td><code>R/provider-gemini.R</code></td>
+<td>
+<code>ProviderGeminiExtended</code> class, Gemini batch methods</td>
+</tr><tr class="odd"><td><code>R/reexports.R</code></td>
+<td>Re-exports ellmer generics (<code>batch_chat</code>, <code>parallel_chat</code>, etc.)</td>
+</tr><tr class="even"><td><code>R/ellmer.extensions-package.R</code></td>
+<td>Package-level docs, <code>@import S7</code>, <code>@importFrom rlang %||%</code>
+</td>
+</tr><tr class="odd"><td><code>tests/testthat/test-provider-groq.R</code></td>
+<td>Groq offline unit tests</td>
+</tr><tr class="even"><td><code>tests/testthat/test-provider-gemini.R</code></td>
+<td>Gemini offline unit tests</td>
+</tr><tr class="odd"><td><code>tests/testthat/test-api-integration.R</code></td>
+<td>Groq live integration tests</td>
+</tr><tr class="even"><td><code>tests/testthat/test-gemini-batch-integration.R</code></td>
+<td>Gemini live integration tests</td>
+</tr></tbody></table></div>
 <div class="section level2">
-<h2 id="gemini-batch-design-notes">Gemini Batch Design Notes<a class="anchor" aria-label="anchor" href="#gemini-batch-design-notes"></a></h2>
-<ul><li>Uses Gemini Batch API file mode:
-<ul><li>Upload JSONL input file</li>
-<li>Submit <code>models/{model}:batchGenerateContent</code>
+<h2 id="architecture">Architecture<a class="anchor" aria-label="anchor" href="#architecture"></a></h2>
+<ul><li>S7 provider classes created dynamically in <code>.onLoad</code> (extend ellmer parent classes)</li>
+<li>
+<code>ProviderGroqDeveloper</code> extends <code>ProviderOpenAICompatible</code> (Chat Completions format)</li>
+<li>
+<code>ProviderGeminiExtended</code> extends <code>ProviderGoogleGemini</code>
 </li>
-<li>Poll batch operation (<code>batches/...</code>)</li>
-<li>Download output file via <code>files/*:download</code>
+<li>Both use <code>register_*_methods()</code> + <code><a href="https://rconsortium.github.io/S7/reference/methods_register.html" class="external-link">S7::methods_register()</a></code>
 </li>
-</ul></li>
-<li>Batch line format is normalized defensively to handle both:
-<ul><li>Plain <code>GenerateContentResponse</code> lines</li>
-<li>Wrapped <code>response/error/status</code> variants</li>
-</ul></li>
-<li>Batch method registration is done in <code>.onLoad</code>, with a defensive re-registration in <code><a href="reference/chat_gemini_extended.html">chat_gemini_extended()</a></code> to support <code>devtools::load_all()</code> workflows.</li>
+<li>ellmer internals accessed via <code>asNamespace("ellmer")</code> throughout</li>
+<li>
+<code>%||%</code> imported from <code>rlang</code>
+</li>
 </ul></div>
 <div class="section level2">
 <h2 id="environment-variables">Environment Variables<a class="anchor" aria-label="anchor" href="#environment-variables"></a></h2>
@@ -80,7 +94,8 @@
 </li>
 <li>Gemini: <code>GEMINI_API_KEY</code> (or <code>GOOGLE_API_KEY</code>)</li>
 <li>Keep <code>.Renviron</code> local only; do not commit it.</li>
-<li>Commit <code>.Renviron.example</code> with placeholder values only.</li>
+<li>
+<code>.Renviron.example</code> contains placeholder values only.</li>
 </ul></div>
 <div class="section level2">
 <h2 id="standard-workflow">Standard Workflow<a class="anchor" aria-label="anchor" href="#standard-workflow"></a></h2>
@@ -92,41 +107,41 @@
 <li><code>Rscript -e "devtools::check()"</code></li>
 </ol></div>
 <div class="section level2">
+<h2 id="testing-notes">Testing Notes<a class="anchor" aria-label="anchor" href="#testing-notes"></a></h2>
+<ul><li>Groq unit tests run offline with dummy credentials.</li>
+<li>Groq integration tests require <code>GROQ_API_KEY</code>.</li>
+<li>Gemini unit tests run offline; cover helper functions (<code>gemini_extract_index</code>, <code>gemini_json_fallback</code>, <code>gemini_normalize_result</code>).</li>
+<li>Gemini integration tests require <code>GEMINI_API_KEY</code> or <code>GOOGLE_API_KEY</code>; poll with bounded timeout and skip if batch does not finish.</li>
+<li>Gemini <code>batch_chat_structured</code> may return HTTP 400 for some models; test skips gracefully.</li>
+<li>Linting via <code>.lintr</code>: <code>line_length_linter(120)</code>, S7 PascalCase names suppressed.</li>
+</ul></div>
+<div class="section level2">
+<h2 id="ci">CI<a class="anchor" aria-label="anchor" href="#ci"></a></h2>
+<ul><li>R-CMD-check: <code>.github/workflows/R-CMD-check.yaml</code> (push to main/master, PRs)</li>
+<li>pkgdown: <code>.github/workflows/pkgdown.yaml</code>
+</li>
+</ul></div>
+<div class="section level2">
 <h2 id="repo-hygiene">Repo Hygiene<a class="anchor" aria-label="anchor" href="#repo-hygiene"></a></h2>
-<ul><li>If <code>.Renviron</code> is accidentally committed, remove it from tracking immediately:
-<ul><li><code>git rm --cached .Renviron</code></li>
-<li>add/update <code>.Renviron.example</code>
-</li>
-</ul></li>
-<li>If a secret reached commit history, purge history before any push:
-<ul><li>Rewrite commits to remove <code>.Renviron</code>
-</li>
-<li>Delete <code>refs/original/*</code>
-</li>
-<li>Expire reflogs and run GC</li>
-<li>Verify:
 <ul><li>
-<code>git log --all -- .Renviron</code> returns no commits</li>
+<code>.Renviron</code> is gitignored and purged from git history.</li>
 <li>
-<code>git rev-list --all --objects | rg "\\.Renviron"</code> only shows <code>.Renviron.example</code>
-</li>
-</ul></li>
-</ul></li>
+<code>data-raw/</code> is gitignored (development scripts only).</li>
+<li>
+<code>docs/</code> is gitignored (built by CI via pkgdown).</li>
 <li>If a secret is ever pushed or shared, rotate keys immediately.</li>
 </ul></div>
 <div class="section level2">
-<h2 id="publishing-setup">Publishing Setup<a class="anchor" aria-label="anchor" href="#publishing-setup"></a></h2>
-<ul><li>Initialize and push GitHub repo: <code>usethis::use_github()</code>
-</li>
-<li>Configure pkgdown pages workflow: <code>usethis::use_pkgdown_github_pages()</code>
-</li>
-</ul></div>
-<div class="section level2">
-<h2 id="testing-notes">Testing Notes<a class="anchor" aria-label="anchor" href="#testing-notes"></a></h2>
-<ul><li>Gemini batch integration can remain queued for extended periods.</li>
+<h2 id="known-issues">Known Issues<a class="anchor" aria-label="anchor" href="#known-issues"></a></h2>
+<ul><li>
+<code>ProviderGeminiExtended</code> not exported by design (use <code><a href="reference/chat_gemini_extended.html">chat_gemini_extended()</a></code>).</li>
+<li>Groq structured outputs: no streaming or tool use support.</li>
+<li>Gemini batch jobs can remain queued for extended periods.</li>
 <li>
-<code>test-gemini-batch-integration.R</code> polls with a bounded timeout and skips if the batch does not finish in time.</li>
-<li>A skip in that test is expected behavior under queue pressure; build/check should still pass.</li>
+<code>.onLoad</code> silently defers initialization failures (needed for doc builds).</li>
+<li>Heavy reliance on <code>asNamespace("ellmer")</code> internals – fragile if ellmer changes.</li>
+<li>
+<code>lifecycle</code> in Suggests; used only for roxygen badge macros at doc-gen time.</li>
 </ul></div>
 </div>
 
