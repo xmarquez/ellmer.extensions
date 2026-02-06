@@ -43,8 +43,13 @@ Method registration uses `S7::method()` calls inside `register_groq_methods()` a
   - Upload JSONL input file via `google_upload_init` / `google_upload_send` / `google_upload_wait`
   - Submit `models/{model}:batchGenerateContent`
   - Poll batch operation
-  - Download output file via `files/*:download`
-- Batch line format is normalized defensively to handle both:
+  - Download output file via `files/*:download` (requires `?alt=media` query parameter)
+- **JSONL format is stricter than the REST API.** The batch JSONL parser does NOT auto-convert like the REST endpoint:
+  - Each line must be `{"key": "string", "request": {GenerateContentRequest}}`
+  - All field names must be **snake_case** (protobuf field names), not camelCase. `ellmer::chat_body()` returns camelCase (`generationConfig`, `systemInstruction`, etc.) so `gemini_prepare_batch_body()` converts them.
+  - Structured output field is `response_json_schema`, NOT `response_schema` (REST API accepts either; batch parser only accepts the newer name).
+  - Empty `system_instruction` blocks (e.g. `{"parts": {"text": ""}}`) are rejected; `gemini_prepare_batch_body()` strips these.
+- Batch output line format is normalized defensively to handle both:
   - Plain `GenerateContentResponse` lines
   - Wrapped `response/error/status` variants
 - Batch method registration is done in `.onLoad`, with a defensive re-registration in `chat_gemini_extended()` to support `devtools::load_all()` workflows.

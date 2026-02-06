@@ -170,3 +170,69 @@ test_that("batch_retrieve handles malformed JSON gracefully", {
   expect_equal(result2$custom_id, "unknown")
   expect_equal(result2$response$status_code, 500)
 })
+
+# URL construction --------------------------------------------------------
+
+test_that("groq_upload_file builds clean URL path without double slashes", {
+  skip_if_not_installed("ellmer")
+
+  ellmer_ns <- asNamespace("ellmer")
+  provider <- ProviderGroqDeveloper(
+    name = "Groq",
+    base_url = "https://api.groq.com/openai/v1",
+    model = "openai/gpt-oss-20b",
+    params = ellmer_ns$params(),
+    extra_args = list(),
+    credentials = ellmer_ns$as_credentials("test", function() "test_key"),
+    extra_headers = character()
+  )
+
+  # Build the same request as groq_upload_file without performing it
+  req <- ellmer_ns$base_request(provider)
+  req <- httr2::req_url_path_append(req, "files")
+  expect_false(grepl("//files", req$url))
+})
+
+test_that("groq_download_file builds clean URL path without double slashes", {
+  skip_if_not_installed("ellmer")
+
+  ellmer_ns <- asNamespace("ellmer")
+  provider <- ProviderGroqDeveloper(
+    name = "Groq",
+    base_url = "https://api.groq.com/openai/v1",
+    model = "openai/gpt-oss-20b",
+    params = ellmer_ns$params(),
+    extra_args = list(),
+    credentials = ellmer_ns$as_credentials("test", function() "test_key"),
+    extra_headers = character()
+  )
+
+  req <- ellmer_ns$base_request(provider)
+  req <- httr2::req_url_path_append(req, "files", "file-abc123", "content")
+  expect_false(grepl("//", sub("^https://", "", req$url)))
+})
+
+# batch_status edge cases -------------------------------------------------
+
+test_that("batch_status clamps n_processing to zero", {
+  skip_if_not_installed("ellmer")
+
+  ellmer_ns <- asNamespace("ellmer")
+  provider <- ProviderGroqDeveloper(
+    name = "Groq",
+    base_url = "https://api.groq.com/openai/v1",
+    model = "openai/gpt-oss-20b",
+    params = ellmer_ns$params(),
+    extra_args = list(),
+    credentials = ellmer_ns$as_credentials("test", function() "test_key"),
+    extra_headers = character()
+  )
+
+  # Simulate a batch where completed > total (shouldn't happen but test the clamp)
+  batch <- list(
+    status = "completed",
+    request_counts = list(total = 5, completed = 6, failed = 0)
+  )
+  status <- ellmer_ns$batch_status(provider, batch)
+  expect_equal(status$n_processing, 0L)
+})

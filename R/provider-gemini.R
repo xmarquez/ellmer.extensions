@@ -49,13 +49,21 @@ gemini_prepare_batch_body <- function(body) {
     }
   }
 
+  # Save user-defined schema before snake_case conversion so property names
+
+  # like "firstName" are not mangled to "first_name" (gemini_to_snake_case
+  # only converts list *names*, but schema property keys are list names too).
+  gc_pre <- body$generationConfig %||% body$generation_config
+  saved_schema <- if (!is.null(gc_pre)) {
+    gc_pre$responseSchema %||% gc_pre$response_schema
+  }
+
   body <- gemini_to_snake_case(body)
 
-  # Rename response_schema -> response_json_schema if present
-  # The batch JSONL parser uses the newer field name
+  # Rename response_schema -> response_json_schema and restore original schema
   gc <- body$generation_config
-  if (!is.null(gc) && !is.null(gc$response_schema)) {
-    gc$response_json_schema <- gc$response_schema
+  if (!is.null(gc) && (!is.null(gc$response_schema) || !is.null(saved_schema))) {
+    gc$response_json_schema <- saved_schema %||% gc$response_schema
     gc$response_schema <- NULL
     body$generation_config <- gc
   }

@@ -58,7 +58,7 @@ add_additional_properties_false <- function(node) {
 groq_upload_file <- function(provider, path, purpose = "batch") {
   ellmer_ns <- asNamespace("ellmer")
   req <- ellmer_ns$base_request(provider)
-  req <- httr2::req_url_path_append(req, "/files")
+  req <- httr2::req_url_path_append(req, "files")
 
   # Use curl::form_file with explicit filename and type
   req <- httr2::req_body_multipart(
@@ -81,7 +81,7 @@ groq_upload_file <- function(provider, path, purpose = "batch") {
 groq_download_file <- function(provider, id, path) {
   ellmer_ns <- asNamespace("ellmer")
   req <- ellmer_ns$base_request(provider)
-  req <- httr2::req_url_path_append(req, "/files/", id, "/content")
+  req <- httr2::req_url_path_append(req, "files", id, "content")
   httr2::req_perform(req, path = path)
 
   invisible(path)
@@ -180,7 +180,7 @@ register_groq_methods <- function() {
 
     # Create batch job
     req <- ellmer_ns$base_request(provider)
-    req <- httr2::req_url_path_append(req, "/batches")
+    req <- httr2::req_url_path_append(req, "batches")
     req <- httr2::req_body_json(req, list(
       input_file_id = uploaded$id,
       endpoint = "/v1/chat/completions",
@@ -194,7 +194,7 @@ register_groq_methods <- function() {
   # Register batch_poll method
   S7::method(batch_poll, ProviderGroqDeveloper) <- function(provider, batch) {
     req <- ellmer_ns$base_request(provider)
-    req <- httr2::req_url_path_append(req, "/batches/", batch$id)
+    req <- httr2::req_url_path_append(req, "batches", batch$id)
 
     resp <- httr2::req_perform(req)
     httr2::resp_body_json(resp)
@@ -217,7 +217,7 @@ register_groq_methods <- function() {
 
     list(
       working = is_working,
-      n_processing = total - completed - failed,
+      n_processing = max(total - completed - failed, 0L),
       n_succeeded = completed,
       n_failed = failed
     )

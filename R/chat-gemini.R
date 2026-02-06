@@ -47,7 +47,11 @@ chat_gemini_extended <- function(
   default_credentials <- if (exists("default_google_credentials", envir = ellmer_ns, inherits = FALSE)) {
     ellmer_ns$default_google_credentials(variant = "gemini")
   } else {
-    function() key_get("GEMINI_API_KEY")
+    function() {
+      val <- Sys.getenv("GEMINI_API_KEY")
+      if (nzchar(val)) return(val)
+      key_get("GOOGLE_API_KEY")
+    }
   }
 
   credentials <- ellmer_ns$as_credentials(
