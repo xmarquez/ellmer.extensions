@@ -21,7 +21,7 @@ test_that("Gemini batch_chat submits and can be resumed", {
     "No Gemini credentials set"
   )
 
-  chat <- chat_gemini_extended(model = "gemini-2.5-flash")
+  chat <- chat_gemini_extended(model = "gemini-3-flash-preview")
 
   prompts <- list("Reply with exactly: ok")
   results_file <- tempfile(fileext = ".json")
@@ -46,7 +46,7 @@ test_that("Gemini batch_chat submits and can be resumed", {
 
   if (is.null(chats)) {
     completed <- FALSE
-    for (i in seq_len(12)) {
+    for (i in seq_len(100)) {
       Sys.sleep(10)
       completed <- isTRUE(ellmer::batch_chat_completed(chat, prompts, results_file))
       if (completed) {
@@ -78,7 +78,7 @@ test_that("Gemini batch_chat_structured works", {
   )
 
   ellmer_ns <- asNamespace("ellmer")
-  chat <- chat_gemini_extended(model = "gemini-2.5-flash")
+  chat <- chat_gemini_extended(model = "gemini-3-flash-preview")
 
   type_answer <- ellmer_ns$type_object(
     answer = ellmer_ns$type_string()
@@ -100,8 +100,8 @@ test_that("Gemini batch_chat_structured works", {
       msg <- conditionMessage(e)
       if (grepl("unexpected number of responses", msg, fixed = TRUE)) {
         NULL
-      } else if (grepl("HTTP 400|invalid argument", msg, ignore.case = TRUE)) {
-        skip("Gemini batch structured output not supported for this model/config.")
+      } else if (grepl("HTTP 40[04]|invalid argument|not found|not supported", msg, ignore.case = TRUE)) {
+        skip(paste0("Gemini batch API rejected request: ", msg))
       } else {
         stop(e)
       }

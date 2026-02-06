@@ -8,6 +8,61 @@ ProviderGeminiExtended <- NULL
 
 # Gemini batch helpers ----------------------------------------------------
 
+#' Convert camelCase list names to snake_case recursively
+#'
+#' The Gemini REST API auto-converts camelCase to snake_case, but the
+#' batch JSONL file parser requires protobuf field names (snake_case).
+#' @noRd
+gemini_to_snake_case <- function(x) {
+  if (is.list(x)) {
+    if (!is.null(names(x))) {
+      names(x) <- gsub("([a-z])([A-Z])", "\\1_\\2", names(x), perl = TRUE) |>
+        tolower()
+    }
+    lapply(x, gemini_to_snake_case)
+  } else {
+    x
+  }
+}
+
+#' Clean a chat_body for Gemini batch JSONL serialization
+#'
+#' Removes empty system instructions and converts camelCase keys to snake_case.
+#' @noRd
+gemini_prepare_batch_body <- function(body) {
+  # Remove empty system instructions (batch parser rejects them)
+  si <- body$systemInstruction %||% body$system_instruction
+  if (!is.null(si)) {
+    parts <- si$parts
+    is_empty <- if (is.list(parts) && !is.null(names(parts))) {
+      # Single part auto-unboxed to object: {"text": ""}
+      identical(parts$text, "") || is.null(parts$text)
+    } else if (is.list(parts) && length(parts) > 0) {
+      # Array of parts
+      all(vapply(parts, function(p) identical(p$text, "") || is.null(p$text), logical(1)))
+    } else {
+      TRUE
+    }
+    if (is_empty) {
+      body$systemInstruction <- NULL
+      body$system_instruction <- NULL
+    }
+  }
+
+  body <- gemini_to_snake_case(body)
+
+  # Rename response_schema -> response_json_schema if present
+  # The batch JSONL parser uses the newer field name
+  gc <- body$generation_config
+  if (!is.null(gc) && !is.null(gc$response_schema)) {
+    gc$response_json_schema <- gc$response_schema
+    gc$response_schema <- NULL
+    body$generation_config <- gc
+  }
+
+  body
+}
+
 #' Upload a JSONL input file for Gemini batch processing
 #' @noRd
 gemini_upload_file <- function(provider, path, mime_type = "application/jsonl") {
@@ -36,6 +91,7 @@ gemini_download_file <- function(provider, name, path) {
   ellmer_ns <- asNamespace("ellmer")
   req <- ellmer_ns$base_request(provider)
   req <- httr2::req_url_path_append(req, paste0(name, ":download"))
+  req <- httr2::req_url_query(req, alt = "media")
   httr2::req_perform(req, path = path)
   invisible(path)
 }
@@ -135,8 +191,8 @@ register_gemini_methods <- function() {
       )
 
       list(
-        metadata = list(request_index = i, custom_id = paste0("chat-", i)),
-        request = body
+        key = paste0("chat-", i),
+        request = gemini_prepare_batch_body(body)
       )
     })
 
