@@ -17,7 +17,7 @@ Both provider classes are created dynamically in `.onLoad` (in `R/provider-groq.
 - `ProviderGroqDeveloper` extends `ellmer::ProviderOpenAICompatible` (Chat Completions API format)
 - `ProviderGeminiExtended` extends `ellmer::ProviderGoogleGemini`
 
-Method registration uses `S7::method()` calls inside `register_groq_methods()` and `register_gemini_methods()`, followed by `S7::methods_register()`.
+Method registration uses `S7::method()` calls inside `register_groq_methods()` and `register_gemini_methods()`, followed by `S7::methods_register()`. Each provider's class creation and method registration is wrapped in its own `tryCatch(suppressMessages(...))` block so that a failure in one provider does not prevent the other from initializing.
 
 ### Key Files
 
@@ -47,7 +47,8 @@ Method registration uses `S7::method()` calls inside `register_groq_methods()` a
 - Batch line format is normalized defensively to handle both:
   - Plain `GenerateContentResponse` lines
   - Wrapped `response/error/status` variants
-- Batch method registration is done in `.onLoad`, with a defensive re-registration in `chat_gemini_extended()` to support `devtools::load_all()` workflows
+- Batch method registration is done in `.onLoad`, with a defensive re-registration in `chat_gemini_extended()` to support `devtools::load_all()` workflows.
+- `batch_retrieve` checks multiple paths for `responsesFile` (`response$output$responsesFile`, `response$responsesFile`, `metadata$output$responsesFile`) because the Gemini API response structure varies between API versions.
 - 50% cost discount, target 24-hour turnaround, 2 GB max file size, 48-hour expiry
 - Structured output via `batch_chat_structured()` may not be supported on all Gemini models (HTTP 400); integration tests handle this gracefully
 
@@ -86,8 +87,11 @@ Run from package root:
 - `ProviderGeminiExtended` is not exported (by design; users should use `chat_gemini_extended()`).
 - Groq structured outputs do not support streaming or tool use.
 - Gemini batch jobs can remain queued for extended periods; integration tests handle this gracefully.
-- The `.onLoad` error handler silently defers initialization failures (needed for documentation builds); users see informative errors when they try to use provider functions.
+- The `.onLoad` error handlers silently defer initialization failures (needed for documentation builds); users see informative errors when they try to use provider functions.
 - Heavy reliance on `asNamespace("ellmer")` for internal functions -- fragile if ellmer renames internals.
+- **S7 segfault on Windows R 4.5.1:** Creating S7 subclasses of ellmer providers (`S7::new_class(parent = ProviderGoogleGemini)`) segfaults when called outside `.onLoad` context. This also affects `S7::method<-` and `register_gemini_methods()` post-load. The classes work correctly when created during `.onLoad`. This is why `chat_gemini_extended()` has a defensive `register_gemini_methods()` call, and why the `has_batch_support` test also re-registers defensively.
+- **`S7::method<-` prints "Overwriting method" messages** that R CMD check treats as unsuppressable startup messages. All registration calls must be wrapped in `suppressMessages()`.
+- `lifecycle` is in Suggests, not Imports (only used at roxygen doc-gen time for badge macros).
 
 ## Dependencies
 
