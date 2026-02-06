@@ -63,16 +63,16 @@ gemini_extract_index <- function(x, default = NA_integer_) {
 gemini_json_fallback <- function(line) {
   index <- suppressWarnings(as.integer(sub('.*"request_index"\\s*:\\s*([0-9]+).*', "\\1", line, perl = TRUE)))
 
-  if (is.na(index)) {
+  if (length(index) == 0L || is.na(index)) {
     custom_id <- tryCatch({
       m <- regmatches(line, regexpr('"custom_id"\\s*:\\s*"chat-[0-9]+"', line, perl = TRUE))
-      sub('.*"chat-([0-9]+)".*', "\\1", m)
+      if (length(m) == 0L) NA_character_ else sub('.*"chat-([0-9]+)".*', "\\1", m)
     }, error = function(e) NA_character_)
     index <- suppressWarnings(as.integer(custom_id))
   }
 
   list(
-    metadata = if (is.na(index)) list() else list(request_index = index),
+    metadata = if (length(index) == 0L || is.na(index)) list() else list(request_index = index),
     status = list(code = 500L, message = "Failed to parse Gemini batch output line")
   )
 }

@@ -1,6 +1,6 @@
 #' @keywords internal
 #' @import S7
-#' @importFrom ellmer chat_openai
+#' @importFrom rlang `%||%`
 "_PACKAGE"
 
 ## usethis namespace: start

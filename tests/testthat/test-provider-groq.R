@@ -166,7 +166,7 @@ test_that("batch_retrieve handles malformed JSON gracefully", {
   expect_null(result$response$body)
 
   # Test with unknown custom_id
-  result2 <- ellmer.extensions:::groq_json_fallback('malformed json')
+  result2 <- ellmer.extensions:::groq_json_fallback("malformed json")
   expect_equal(result2$custom_id, "unknown")
   expect_equal(result2$response$status_code, 500)
 })

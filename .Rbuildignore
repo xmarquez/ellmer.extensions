@@ -10,3 +10,7 @@
 ^pkgdown$
 ^\.quarto$
 ^AGENTS\.md$
+^CLAUDE\.md$
+^\.lintr$
+^\.Renviron\.example$
+^README\.html$

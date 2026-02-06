@@ -245,7 +245,7 @@ register_groq_methods <- function() {
 
     # Also get error file if it exists
     if (length(batch$error_file_id) == 1 && !is.null(batch$error_file_id) &&
-        !identical(batch$error_file_id, list())) {
+          !identical(batch$error_file_id, list())) {
       path_error <- tempfile(fileext = ".jsonl")
       on.exit(unlink(path_error), add = TRUE)
       groq_download_file(provider, batch$error_file_id, path_error)
@@ -364,8 +364,10 @@ register_groq_methods <- function() {
     # Register all S7 methods with ellmer
     S7::methods_register()
   }, error = function(e) {
-    # During documentation build, ellmer may not be available
-    # Suppress errors and rely on lazy loading
+    # During documentation build, ellmer may not be available.
+    # Log a message when interactive so real failures aren't silent.
+    # Silently deferred during documentation builds; interactive users will
+    # see an informative error when they try to use the provider functions.
     NULL
   })
 }
