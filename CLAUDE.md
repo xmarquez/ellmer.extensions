@@ -94,8 +94,9 @@ Run from package root:
 Core: `ellmer`, `S7`, `purrr`, `cli`, `httr2`, `curl`, `withr`, `jsonlite`, `rlang`
 Suggests: `testthat`, `lifecycle`
 
-## Publishing
+## CI / Publishing
 
 - GitHub repo: https://github.com/xmarquez/ellmer.extensions
 - pkgdown site: https://xmarquez.github.io/ellmer.extensions/
-- Workflow: `.github/workflows/pkgdown.yaml`
+- R-CMD-check: `.github/workflows/R-CMD-check.yaml` (push to main/master, PRs)
+- pkgdown: `.github/workflows/pkgdown.yaml`

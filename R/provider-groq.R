@@ -364,8 +364,6 @@ register_groq_methods <- function() {
     # Register all S7 methods with ellmer
     S7::methods_register()
   }, error = function(e) {
-    # During documentation build, ellmer may not be available.
-    # Log a message when interactive so real failures aren't silent.
     # Silently deferred during documentation builds; interactive users will
     # see an informative error when they try to use the provider functions.
     NULL

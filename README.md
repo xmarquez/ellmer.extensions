@@ -5,6 +5,7 @@
 
 <!-- badges: start -->
 
+[![R-CMD-check](https://github.com/xmarquez/ellmer.extensions/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/xmarquez/ellmer.extensions/actions/workflows/R-CMD-check.yaml)
 <!-- badges: end -->
 
 `ellmer.extensions` extends
