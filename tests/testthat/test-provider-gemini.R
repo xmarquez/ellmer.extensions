@@ -76,6 +76,11 @@ test_that("gemini_extract_index extracts from key field", {
   expect_equal(ellmer.extensions:::gemini_extract_index(x), 7L)
 })
 
+test_that("gemini_extract_index extracts from metadata key field", {
+  x <- list(metadata = list(key = "chat-8"))
+  expect_equal(ellmer.extensions:::gemini_extract_index(x), 8L)
+})
+
 test_that("gemini_extract_index returns default when no index found", {
   x <- list(foo = "bar")
   expect_equal(ellmer.extensions:::gemini_extract_index(x, default = 99L), 99L)
@@ -213,6 +218,141 @@ test_that("gemini_prepare_batch_body keeps non-empty system instruction", {
 
   expect_false(is.null(result$system_instruction))
   expect_equal(result$system_instruction$parts$text, "You are helpful.")
+})
+
+# Batch support -----------------------------------------------------------
+
+test_that("batch_status keeps working when succeeded but no responsesFile", {
+  skip_if_not_installed("ellmer")
+  skip_if(
+    is.null(ellmer.extensions:::ProviderGeminiExtended),
+    "ProviderGeminiExtended not initialized"
+  )
+
+  ellmer_ns <- asNamespace("ellmer")
+
+  tryCatch(suppressMessages(ellmer.extensions:::register_gemini_methods()), error = function(e) NULL)
+
+  provider <- ellmer.extensions:::ProviderGeminiExtended(
+    name = "Google/Gemini",
+    base_url = "https://generativelanguage.googleapis.com/v1beta/",
+    model = "gemini-2.5-flash",
+    params = ellmer_ns$params(),
+    extra_args = list(),
+    credentials = ellmer_ns$as_credentials("test", function() "test_key"),
+    extra_headers = character()
+  )
+
+  batch <- list(
+    metadata = list(
+      state = "BATCH_STATE_SUCCEEDED",
+      batchStats = list(requestCount = 2L, successfulRequestCount = 2L)
+    )
+  )
+
+  status <- ellmer_ns$batch_status(provider, batch)
+  expect_true(status$working)
+})
+
+test_that("batch_status marks done when succeeded with responsesFile", {
+  skip_if_not_installed("ellmer")
+  skip_if(
+    is.null(ellmer.extensions:::ProviderGeminiExtended),
+    "ProviderGeminiExtended not initialized"
+  )
+
+  ellmer_ns <- asNamespace("ellmer")
+
+  tryCatch(suppressMessages(ellmer.extensions:::register_gemini_methods()), error = function(e) NULL)
+
+  provider <- ellmer.extensions:::ProviderGeminiExtended(
+    name = "Google/Gemini",
+    base_url = "https://generativelanguage.googleapis.com/v1beta/",
+    model = "gemini-2.5-flash",
+    params = ellmer_ns$params(),
+    extra_args = list(),
+    credentials = ellmer_ns$as_credentials("test", function() "test_key"),
+    extra_headers = character()
+  )
+
+  batch <- list(
+    metadata = list(
+      state = "BATCH_STATE_SUCCEEDED",
+      batchStats = list(requestCount = 2L, successfulRequestCount = 2L)
+    ),
+    response = list(responsesFile = "files/abc123")
+  )
+
+  status <- ellmer_ns$batch_status(provider, batch)
+  expect_false(status$working)
+})
+
+test_that("batch_retrieve reorders out-of-order Gemini results by key", {
+  skip_if_not_installed("ellmer")
+  skip_if(
+    is.null(ellmer.extensions:::ProviderGeminiExtended),
+    "ProviderGeminiExtended not initialized"
+  )
+
+  ellmer_ns <- asNamespace("ellmer")
+
+  tryCatch(suppressMessages(ellmer.extensions:::register_gemini_methods()), error = function(e) NULL)
+
+  provider <- ellmer.extensions:::ProviderGeminiExtended(
+    name = "Google/Gemini",
+    base_url = "https://generativelanguage.googleapis.com/v1beta/",
+    model = "gemini-2.5-flash",
+    params = ellmer_ns$params(),
+    extra_args = list(),
+    credentials = ellmer_ns$as_credentials("test", function() "test_key"),
+    extra_headers = character()
+  )
+
+  batch <- list(
+    metadata = list(batchStats = list(requestCount = 3L)),
+    response = list(responsesFile = "files/abc123")
+  )
+
+  local_mocked_bindings(
+    gemini_download_file = function(provider, name, path) {
+      lines <- c(
+        jsonlite::toJSON(list(
+          key = "chat-3",
+          response = list(
+            responseId = "third",
+            candidates = list(list(content = list(parts = list(list(text = "{}"))))),
+            usageMetadata = list(totalTokenCount = 3L)
+          )
+        ), auto_unbox = TRUE),
+        jsonlite::toJSON(list(
+          key = "chat-1",
+          response = list(
+            responseId = "first",
+            candidates = list(list(content = list(parts = list(list(text = "{}"))))),
+            usageMetadata = list(totalTokenCount = 1L)
+          )
+        ), auto_unbox = TRUE),
+        jsonlite::toJSON(list(
+          key = "chat-2",
+          response = list(
+            responseId = "second",
+            candidates = list(list(content = list(parts = list(list(text = "{}"))))),
+            usageMetadata = list(totalTokenCount = 2L)
+          )
+        ), auto_unbox = TRUE)
+      )
+      writeLines(lines, path)
+      invisible(path)
+    }
+  )
+
+  results <- ellmer_ns$batch_retrieve(provider, batch)
+
+  expect_equal(vapply(results, \(x) x$body$responseId, character(1)), c(
+    "first",
+    "second",
+    "third"
+  ))
 })
 
 # Credential fallback -----------------------------------------------------

@@ -108,13 +108,13 @@ gemini_download_file <- function(provider, name, path) {
 #' @noRd
 gemini_extract_index <- function(x, default = NA_integer_) {
   metadata <- x$metadata %||% list()
-  idx <- metadata$request_index %||% metadata$index %||% default
+  idx <- metadata$request_index %||% metadata$index
 
-  if (!is.na(idx)) {
+  if (!is.null(idx) && !is.na(idx)) {
     return(as.integer(idx))
   }
 
-  key <- x$key %||% x$custom_id %||% metadata$custom_id %||% ""
+  key <- x$key %||% x$custom_id %||% metadata$key %||% metadata$custom_id %||% ""
   if (grepl("^chat-[0-9]+$", key)) {
     return(as.integer(sub("^chat-([0-9]+)$", "\\1", key)))
   }
@@ -264,10 +264,26 @@ register_gemini_methods <- function() {
       "BATCH_STATE_EXPIRED"
     )
 
+    is_done <- state %in% terminal_states
+
+    # Keep polling if succeeded but output file isn't available yet.
+    # The API can report BATCH_STATE_SUCCEEDED before the responsesFile
+    # metadata is populated.
+    if (state == "BATCH_STATE_SUCCEEDED") {
+      responses_file <- response$output$responsesFile %||%
+        response$responsesFile %||%
+        metadata$output$responsesFile %||%
+        metadata$responsesFile %||%
+        ""
+      if (!nzchar(responses_file)) {
+        is_done <- FALSE
+      }
+    }
+
     n_processing <- max(pending, total - succeeded - failed, 0L)
 
     list(
-      working = !(state %in% terminal_states),
+      working = !is_done,
       n_processing = n_processing,
       n_succeeded = max(succeeded, 0L),
       n_failed = max(failed, 0L)
