@@ -13,7 +13,8 @@ chat_gemini_extended(
   params = NULL,
   api_args = list(),
   api_headers = character(),
-  echo = NULL
+  echo = NULL,
+  cache_ttl = NULL
 )
 }
 \arguments{
@@ -36,6 +37,13 @@ need this argument; instead set \code{GEMINI_API_KEY} (or \code{GOOGLE_API_KEY})
 \item{api_headers}{Additional HTTP headers.}
 
 \item{echo}{Whether to echo the conversation to the console.}
+
+\item{cache_ttl}{Optional integer. If set, creates a Gemini context cache
+for the system prompt before batch submission, reducing input token costs.
+Value is the cache TTL in seconds (default \code{NULL} = no caching).
+Recommended: \code{86400} (24 hours) for batch jobs. The cache is automatically
+deleted after batch retrieval. Only effective for batch operations; ignored
+for interactive chat.}
 }
 \value{
 A \link[ellmer:Chat]{ellmer::Chat} object with Gemini support for:

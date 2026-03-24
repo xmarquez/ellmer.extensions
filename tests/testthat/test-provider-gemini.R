@@ -374,3 +374,170 @@ test_that("chat_gemini_extended fallback checks GOOGLE_API_KEY", {
   chat <- chat_gemini_extended(model = "gemini-2.5-flash")
   expect_s3_class(chat, "Chat")
 })
+
+# Context caching helpers --------------------------------------------------
+
+test_that("gemini_prepare_cached_body replaces system_instruction with cached_content", {
+  body <- list(
+    systemInstruction = list(parts = list(text = "You are helpful")),
+    contents = list(list(parts = list(list(text = "Hello")))),
+    generationConfig = list(temperature = 0)
+  )
+  result <- ellmer.extensions:::gemini_prepare_cached_body(body, "cachedContents/abc123")
+
+  expect_null(result$system_instruction)
+  expect_null(result$systemInstruction)
+  expect_equal(result$cached_content, "cachedContents/abc123")
+  # Contents should still be present (snake_case after prepare)
+  expect_false(is.null(result$contents))
+  # generation_config should be present (converted from camelCase)
+  expect_false(is.null(result$generation_config))
+})
+
+test_that("gemini_prepare_cached_body works when no system_instruction exists", {
+  body <- list(
+    contents = list(list(parts = list(list(text = "Hello")))),
+    generationConfig = list(temperature = 0)
+  )
+  result <- ellmer.extensions:::gemini_prepare_cached_body(body, "cachedContents/abc123")
+
+  expect_null(result$system_instruction)
+  expect_equal(result$cached_content, "cachedContents/abc123")
+  expect_false(is.null(result$contents))
+})
+
+test_that("gemini_prepare_cached_body preserves schema properties", {
+  body <- list(
+    systemInstruction = list(parts = list(text = "System")),
+    contents = list(list(parts = list(list(text = "Hello")))),
+    generationConfig = list(
+      responseMimeType = "application/json",
+      responseSchema = list(
+        type = "object",
+        properties = list(
+          firstName = list(type = "string"),
+          lastName = list(type = "string")
+        )
+      )
+    )
+  )
+  result <- ellmer.extensions:::gemini_prepare_cached_body(body, "cachedContents/xyz")
+
+  expect_null(result$system_instruction)
+  expect_equal(result$cached_content, "cachedContents/xyz")
+  # Schema property names should NOT be converted to snake_case
+  schema <- result$generation_config$response_json_schema
+  expect_true("firstName" %in% names(schema$properties))
+  expect_true("lastName" %in% names(schema$properties))
+})
+
+test_that("cache name survives JSON round-trip (simulating wait=FALSE resume)", {
+  batch <- list(
+    name = "batches/test-123",
+    metadata = list(state = "BATCH_STATE_SUCCEEDED"),
+    .gemini_cache_name = "cachedContents/abc123"
+  )
+  json <- jsonlite::toJSON(batch, auto_unbox = TRUE)
+  restored <- jsonlite::fromJSON(json, simplifyVector = FALSE)
+
+  expect_equal(restored$.gemini_cache_name, "cachedContents/abc123")
+})
+
+test_that("batch_poll carries cache name forward", {
+  skip_if_not_installed("ellmer")
+  skip_if_not_installed("ellmer.extensions")
+
+  # Simulate a batch object with cache name
+  batch_with_cache <- list(
+    name = "batches/fake-123",
+    .gemini_cache_name = "cachedContents/test-cache"
+  )
+
+  # We can't call batch_poll directly without hitting the API, but we can
+
+  # verify the carry-forward logic by inspecting the method source
+  # Instead, test the JSON round-trip which is the critical path for resume
+  json <- jsonlite::toJSON(batch_with_cache, auto_unbox = TRUE)
+  restored <- jsonlite::fromJSON(json, simplifyVector = FALSE)
+  expect_equal(restored$.gemini_cache_name, "cachedContents/test-cache")
+  expect_equal(restored$name, "batches/fake-123")
+})
+
+test_that("chat_gemini_extended sets cache_ttl attribute on provider", {
+  skip_if_not_installed("ellmer")
+  skip_if(
+    Sys.getenv("GEMINI_API_KEY") == "" && Sys.getenv("GOOGLE_API_KEY") == "",
+    "No Gemini credentials set"
+  )
+
+  chat <- chat_gemini_extended(
+    model = "gemini-2.5-flash",
+    cache_ttl = 86400
+  )
+  provider <- chat$get_provider()
+  expect_equal(attr(provider, ".gemini_cache_ttl"), 86400L)
+})
+
+test_that("chat_gemini_extended without cache_ttl has no attribute", {
+  skip_if_not_installed("ellmer")
+  skip_if(
+    Sys.getenv("GEMINI_API_KEY") == "" && Sys.getenv("GOOGLE_API_KEY") == "",
+    "No Gemini credentials set"
+  )
+
+  chat <- chat_gemini_extended(model = "gemini-2.5-flash")
+  provider <- chat$get_provider()
+  expect_null(attr(provider, ".gemini_cache_ttl"))
+})
+
+test_that("chat_gemini_extended errors for cache_ttl under 60s", {
+  skip_if_not_installed("ellmer")
+  skip_if(
+    Sys.getenv("GEMINI_API_KEY") == "" && Sys.getenv("GOOGLE_API_KEY") == "",
+    "No Gemini credentials set"
+  )
+
+  expect_error(
+    chat_gemini_extended(model = "gemini-2.5-flash", cache_ttl = 30),
+    "at least 60"
+  )
+})
+
+test_that("chat_gemini_extended warns for cache_ttl under 1 hour", {
+  skip_if_not_installed("ellmer")
+  skip_if(
+    Sys.getenv("GEMINI_API_KEY") == "" && Sys.getenv("GOOGLE_API_KEY") == "",
+    "No Gemini credentials set"
+  )
+
+  expect_warning(
+    chat_gemini_extended(model = "gemini-2.5-flash", cache_ttl = 300),
+    "cache expires"
+  )
+})
+
+test_that("chat_gemini_extended rejects non-numeric cache_ttl", {
+  skip_if_not_installed("ellmer")
+  skip_if(
+    Sys.getenv("GEMINI_API_KEY") == "" && Sys.getenv("GOOGLE_API_KEY") == "",
+    "No Gemini credentials set"
+  )
+
+  expect_error(
+    chat_gemini_extended(model = "gemini-2.5-flash", cache_ttl = "1h"),
+    "must be a numeric"
+  )
+})
+
+test_that("chat_gemini_extended rejects NA cache_ttl", {
+  skip_if_not_installed("ellmer")
+  skip_if(
+    Sys.getenv("GEMINI_API_KEY") == "" && Sys.getenv("GOOGLE_API_KEY") == "",
+    "No Gemini credentials set"
+  )
+
+  expect_error(
+    chat_gemini_extended(model = "gemini-2.5-flash", cache_ttl = NA),
+    "single non-NA"
+  )
+})

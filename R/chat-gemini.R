@@ -19,6 +19,12 @@
 #' @param api_args Additional arguments passed to the API.
 #' @param api_headers Additional HTTP headers.
 #' @param echo Whether to echo the conversation to the console.
+#' @param cache_ttl Optional integer. If set, creates a Gemini context cache
+#'   for the system prompt before batch submission, reducing input token costs.
+#'   Value is the cache TTL in seconds (default `NULL` = no caching).
+#'   Recommended: `86400` (24 hours) for batch jobs. The cache is automatically
+#'   deleted after batch retrieval. Only effective for batch operations; ignored
+#'   for interactive chat.
 #'
 #' @return A [ellmer::Chat] object with Gemini support for:
 #'   - `$chat()`
@@ -37,7 +43,8 @@ chat_gemini_extended <- function(
   params = NULL,
   api_args = list(),
   api_headers = character(),
-  echo = NULL
+  echo = NULL,
+  cache_ttl = NULL
 ) {
   ellmer_ns <- asNamespace("ellmer")
 
@@ -80,6 +87,25 @@ chat_gemini_extended <- function(
     extra_headers = api_headers,
     credentials = credentials
   )
+
+  if (!is.null(cache_ttl)) {
+    if (length(cache_ttl) != 1L || anyNA(cache_ttl)) {
+      cli::cli_abort("{.arg cache_ttl} must be a single non-NA value.")
+    }
+    if (!is.numeric(cache_ttl)) {
+      cli::cli_abort("{.arg cache_ttl} must be a numeric value (seconds), not {.cls {class(cache_ttl)}}.")
+    }
+    cache_ttl <- as.integer(cache_ttl)
+    if (cache_ttl < 60L) {
+      cli::cli_abort("{.arg cache_ttl} must be at least 60 seconds.")
+    }
+    if (cache_ttl < 3600L) {
+      cli::cli_warn(
+        "{.arg cache_ttl} is {cache_ttl}s ({round(cache_ttl / 60)}min). Gemini batches can take hours to complete; if the cache expires before the batch runs, all requests will fail. Consider 86400 (24h)."
+      )
+    }
+    attr(provider, ".gemini_cache_ttl") <- cache_ttl
+  }
 
   ellmer_ns$Chat$new(
     provider = provider,

@@ -104,6 +104,71 @@ gemini_download_file <- function(provider, name, path) {
   invisible(path)
 }
 
+# Context caching helpers --------------------------------------------------
+
+#' Create a Gemini context cache for a system prompt
+#'
+#' Creates a `cachedContents` resource via the Gemini REST API. The returned
+#' cache name can be passed in batch request bodies as `cached_content` instead
+#' of `system_instruction`, reducing input token costs.
+#'
+#' @param provider A ProviderGeminiExtended object (provides base_url and credentials)
+#' @param system_prompt_text Character string of the system prompt to cache
+#' @param ttl_seconds Integer TTL in seconds (default 86400 = 24 hours)
+#' @return Character cache name (e.g. `"cachedContents/abc123"`)
+#' @noRd
+gemini_create_cache <- function(provider, system_prompt_text, ttl_seconds = 86400L) {
+  ellmer_ns <- asNamespace("ellmer")
+  req <- ellmer_ns$base_request(provider)
+  req <- httr2::req_url_path_append(req, "cachedContents")
+  req <- httr2::req_body_json(req, list(
+    model = paste0("models/", provider@model),
+    systemInstruction = list(parts = list(list(text = system_prompt_text))),
+    contents = list(),
+    ttl = paste0(as.integer(ttl_seconds), "s")
+  ))
+  resp <- httr2::req_perform(req)
+  body <- httr2::resp_body_json(resp)
+  body$name
+}
+
+#' Delete a Gemini context cache
+#'
+#' Fire-and-forget deletion; errors produce a warning only.
+#'
+#' @param provider A ProviderGeminiExtended object
+#' @param cache_name Character cache name (e.g. `"cachedContents/abc123"`)
+#' @noRd
+gemini_delete_cache <- function(provider, cache_name) {
+  ellmer_ns <- asNamespace("ellmer")
+  req <- ellmer_ns$base_request(provider)
+  req <- httr2::req_url_path_append(req, cache_name)
+  req <- httr2::req_method(req, "DELETE")
+  tryCatch(
+    httr2::req_perform(req),
+    error = function(e) cli::cli_warn("Failed to delete Gemini cache {.val {cache_name}}: {e$message}")
+  )
+  invisible(NULL)
+}
+
+#' Prepare a batch body with cached content reference
+#'
+#' Calls `gemini_prepare_batch_body()` then replaces `system_instruction`
+#' with a `cached_content` reference.
+#'
+#' @param body List from `chat_body()`
+#' @param cache_name Character cache name (e.g. `"cachedContents/abc123"`)
+#' @return Modified body ready for batch JSONL
+#' @noRd
+gemini_prepare_cached_body <- function(body, cache_name) {
+  body <- gemini_prepare_batch_body(body)
+  body$system_instruction <- NULL
+  body$cached_content <- cache_name
+  body
+}
+
+# Batch metadata helpers ---------------------------------------------------
+
 #' Extract request index from known batch metadata fields
 #' @noRd
 gemini_extract_index <- function(x, default = NA_integer_) {
@@ -190,6 +255,44 @@ register_gemini_methods <- function() {
   ) {
     path <- withr::local_tempfile(fileext = ".jsonl")
 
+    # Check if context caching is requested (attr set by chat_gemini_extended)
+    cache_ttl <- attr(provider, ".gemini_cache_ttl")
+    cache_name <- NULL
+
+    if (!is.null(cache_ttl) && length(conversations) > 0) {
+      # Extract system prompt from first conversation to validate uniformity
+      si_texts <- vapply(conversations, function(conv) {
+        body <- chat_body(provider, stream = FALSE, turns = conv, type = type)
+        si <- body$systemInstruction
+        if (is.null(si) || is.null(si$parts)) return("")
+        if (!is.null(names(si$parts))) return(si$parts$text %||% "")
+        if (length(si$parts) > 0) return(si$parts[[1]]$text %||% "")
+        ""
+      }, character(1))
+
+      unique_prompts <- unique(si_texts[nzchar(si_texts)])
+      if (length(unique_prompts) == 1L && all(nzchar(si_texts))) {
+        cache_name <- tryCatch(
+          gemini_create_cache(provider, unique_prompts, as.integer(cache_ttl)),
+          error = function(e) {
+            cli::cli_warn(
+              "Gemini cache creation failed, proceeding without caching: {e$message}"
+            )
+            NULL
+          }
+        )
+      } else if (length(unique_prompts) == 1L && !all(nzchar(si_texts))) {
+        cli::cli_warn(
+          "Some conversations have no system prompt; skipping Gemini context caching."
+        )
+      } else if (length(unique_prompts) > 1L) {
+        cli::cli_warn(
+          "Conversations have different system prompts; skipping Gemini context caching."
+        )
+      }
+    }
+
+    # Build JSONL request lines
     requests <- purrr::map(seq_along(conversations), function(i) {
       body <- chat_body(
         provider,
@@ -198,10 +301,13 @@ register_gemini_methods <- function() {
         type = type
       )
 
-      list(
-        key = paste0("chat-", i),
-        request = gemini_prepare_batch_body(body)
-      )
+      prepared <- if (!is.null(cache_name)) {
+        gemini_prepare_cached_body(body, cache_name)
+      } else {
+        gemini_prepare_batch_body(body)
+      }
+
+      list(key = paste0("chat-", i), request = prepared)
     })
 
     json_lines <- purrr::map_chr(requests, function(x) {
@@ -209,37 +315,54 @@ register_gemini_methods <- function() {
     })
     writeLines(json_lines, path)
 
-    uploaded <- gemini_upload_file(provider, path)
-    if (is.null(uploaded$name) || !nzchar(uploaded$name)) {
-      cli::cli_abort("Gemini upload did not return a file resource name.")
-    }
+    # Upload and submit; clean up cache on failure
+    batch_result <- tryCatch({
+      uploaded <- gemini_upload_file(provider, path)
+      if (is.null(uploaded$name) || !nzchar(uploaded$name)) {
+        cli::cli_abort("Gemini upload did not return a file resource name.")
+      }
 
-    req <- ellmer_ns$base_request(provider)
-    req <- httr2::req_url_path_append(
-      req,
-      "models",
-      paste0(provider@model, ":batchGenerateContent")
-    )
-    req <- httr2::req_body_json(
-      req,
-      list(
-        batch = list(
-          displayName = paste0("ellmer-extensions-", as.integer(Sys.time())),
-          model = paste0("models/", provider@model),
-          inputConfig = list(fileName = uploaded$name)
+      req <- ellmer_ns$base_request(provider)
+      req <- httr2::req_url_path_append(
+        req,
+        "models",
+        paste0(provider@model, ":batchGenerateContent")
+      )
+      req <- httr2::req_body_json(
+        req,
+        list(
+          batch = list(
+            displayName = paste0("ellmer-extensions-", as.integer(Sys.time())),
+            model = paste0("models/", provider@model),
+            inputConfig = list(fileName = uploaded$name)
+          )
         )
       )
-    )
 
-    resp <- httr2::req_perform(req)
-    httr2::resp_body_json(resp)
+      resp <- httr2::req_perform(req)
+      httr2::resp_body_json(resp)
+    }, error = function(e) {
+      if (!is.null(cache_name)) gemini_delete_cache(provider, cache_name)
+      stop(e)
+    })
+
+    # Embed cache name in batch object so it survives wait=FALSE serialization
+    if (!is.null(cache_name)) {
+      batch_result$.gemini_cache_name <- cache_name
+    }
+
+    batch_result
   }
 
   S7::method(batch_poll, ProviderGeminiExtended) <- function(provider, batch) {
+    cache_name <- batch$.gemini_cache_name
     req <- ellmer_ns$base_request(provider)
     req <- httr2::req_url_path_append(req, batch$name)
     resp <- httr2::req_perform(req)
-    httr2::resp_body_json(resp)
+    result <- httr2::resp_body_json(resp)
+    # Carry cache name forward (API response won't include it)
+    if (!is.null(cache_name)) result$.gemini_cache_name <- cache_name
+    result
   }
 
   S7::method(batch_status, ProviderGeminiExtended) <- function(provider, batch) {
@@ -291,6 +414,12 @@ register_gemini_methods <- function() {
   }
 
   S7::method(batch_retrieve, ProviderGeminiExtended) <- function(provider, batch) {
+    # Schedule cache cleanup (runs on both success and failure paths)
+    cache_name <- batch$.gemini_cache_name
+    if (!is.null(cache_name)) {
+      on.exit(gemini_delete_cache(provider, cache_name), add = TRUE)
+    }
+
     metadata <- batch$metadata %||% list()
     response <- batch$response %||% list()
     stats <- metadata$batchStats %||% response$batchStats %||% list()

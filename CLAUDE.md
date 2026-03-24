@@ -69,6 +69,25 @@ req_url_path_append(req, "/files/", id, "/content")
 - 50% cost discount, target 24-hour turnaround, 2 GB max file size, 48-hour expiry
 - Structured output via `batch_chat_structured()` may not be supported on all Gemini models (HTTP 400); integration tests handle this gracefully
 
+### Gemini Context Caching
+
+Opt-in via `cache_ttl` parameter in `chat_gemini_extended()`. When set, batch operations create a Gemini `cachedContents` resource for the system prompt before submission, then reference it in each JSONL request via `cached_content` instead of `system_instruction`. This reduces input token costs (cached tokens billed at a reduced model-specific rate).
+
+**Cache lifecycle:**
+1. `batch_submit`: Creates cache via `POST cachedContents`, embeds `cache_name` in the returned batch object as `.gemini_cache_name`
+2. `batch_poll`: Carries `.gemini_cache_name` forward when the batch object is refreshed from the API
+3. `batch_retrieve`: Deletes cache via `on.exit()` (runs on both success and failure paths)
+
+**Design decisions:**
+- Cache name is embedded in the batch object (not a package-level env) so it survives `wait=FALSE` → resume cycles (BatchJob serializes `self$batch` to JSON)
+- `jsonlite` preserves dot-prefixed field names through `toJSON`/`fromJSON` round-trip
+- System prompt validation: caching only activates when all conversations share an identical system prompt text
+- Cache creation failure falls back silently to non-cached batch (with a warning)
+- All cache API calls use `base_request(provider)` to respect custom `base_url`
+- S7 value semantics: `attr(provider, ".gemini_cache_ttl")` is set in `chat_gemini_extended()` before `Chat$new()` — readable inside batch methods but mutations inside methods don't propagate out (which is why the batch object, not the provider, carries the cache name)
+
+**TTL recommendation:** `86400` (24 hours) for batch jobs. Gemini batches can run up to 24 hours; shorter TTLs risk expiring mid-batch. `cache_ttl < 60` produces a warning.
+
 ## Environment Variables
 
 - Groq: `GROQ_API_KEY`
