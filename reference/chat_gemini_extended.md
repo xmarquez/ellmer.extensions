@@ -23,7 +23,8 @@ chat_gemini_extended(
   params = NULL,
   api_args = list(),
   api_headers = character(),
-  echo = NULL
+  echo = NULL,
+  cache_ttl = NULL
 )
 ```
 
@@ -67,6 +68,15 @@ chat_gemini_extended(
 - echo:
 
   Whether to echo the conversation to the console.
+
+- cache_ttl:
+
+  Optional integer. If set, creates a Gemini context cache for the
+  system prompt before batch submission, reducing input token costs.
+  Value is the cache TTL in seconds (default `NULL` = no caching).
+  Recommended: `86400` (24 hours) for batch jobs. The cache is
+  automatically deleted after batch retrieval. Only effective for batch
+  operations; ignored for interactive chat.
 
 ## Value
 

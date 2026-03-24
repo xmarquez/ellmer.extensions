@@ -59,7 +59,8 @@ provider subclass that implements batch methods required by ellmer.</p>
 <span>  params <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  api_args <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span>,</span>
 <span>  api_headers <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="op">)</span>,</span>
-<span>  echo <span class="op">=</span> <span class="cn">NULL</span></span>
+<span>  echo <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  cache_ttl <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -103,6 +104,15 @@ need this argument; instead set <code>GEMINI_API_KEY</code> (or <code>GOOGLE_API
 
 <dt id="arg-echo">echo<a class="anchor" aria-label="anchor" href="#arg-echo"></a></dt>
 <dd><p>Whether to echo the conversation to the console.</p></dd>
+
+
+<dt id="arg-cache-ttl">cache_ttl<a class="anchor" aria-label="anchor" href="#arg-cache-ttl"></a></dt>
+<dd><p>Optional integer. If set, creates a Gemini context cache
+for the system prompt before batch submission, reducing input token costs.
+Value is the cache TTL in seconds (default <code>NULL</code> = no caching).
+Recommended: <code>86400</code> (24 hours) for batch jobs. The cache is automatically
+deleted after batch retrieval. Only effective for batch operations; ignored
+for interactive chat.</p></dd>
 
 </dl></div>
     <div class="section level2">
