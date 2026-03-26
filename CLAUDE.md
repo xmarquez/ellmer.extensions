@@ -6,18 +6,20 @@
 - **Purpose:** Extend [ellmer](https://github.com/tidyverse/ellmer) with:
   - Groq provider support (`chat_groq_developer`, `ProviderGroqDeveloper`)
   - Gemini file-based batch support (`chat_gemini_extended`, `ProviderGeminiExtended`)
+  - Anthropic extended thinking + structured output (`chat_anthropic_extended`, `ProviderAnthropicExtended`)
 - **Origin:** Cloned from `groqDeveloper` and adapted with Gemini batch functionality.
 
 ## Architecture
 
 ### Provider Classes (S7)
 
-Both provider classes are created dynamically in `.onLoad` (in `R/provider-groq.R`) because they extend ellmer classes that aren't available at package build time:
+All provider classes are created dynamically in `.onLoad` (in `R/provider-groq.R`) because they extend ellmer classes that aren't available at package build time:
 
 - `ProviderGroqDeveloper` extends `ellmer::ProviderOpenAICompatible` (Chat Completions API format)
 - `ProviderGeminiExtended` extends `ellmer::ProviderGoogleGemini`
+- `ProviderAnthropicExtended` extends `ellmer::ProviderAnthropic`
 
-Method registration uses `S7::method()` calls inside `register_groq_methods()` and `register_gemini_methods()`, followed by `S7::methods_register()`. Each provider's class creation and method registration is wrapped in its own `tryCatch(suppressMessages(...))` block so that a failure in one provider does not prevent the other from initializing.
+Method registration uses `S7::method()` calls inside `register_groq_methods()`, `register_gemini_methods()`, and `register_anthropic_methods()`, followed by `S7::methods_register()`. Each provider's class creation and method registration is wrapped in its own `tryCatch(suppressMessages(...))` block so that a failure in one provider does not prevent the others from initializing.
 
 ### Key Files
 
@@ -27,6 +29,8 @@ Method registration uses `S7::method()` calls inside `register_groq_methods()` a
 | `R/provider-groq.R` | `ProviderGroqDeveloper` class, Groq batch methods, schema methods, `.onLoad` |
 | `R/chat-gemini.R` | Gemini chat constructor (`chat_gemini_extended`) |
 | `R/provider-gemini.R` | `ProviderGeminiExtended` class, Gemini batch upload/submit/poll/status/retrieve methods |
+| `R/chat-anthropic.R` | Anthropic chat constructor (`chat_anthropic_extended`) |
+| `R/provider-anthropic.R` | `ProviderAnthropicExtended` class, chat_body and value_turn overrides |
 | `R/reexports.R` | Re-exports ellmer generics (`batch_chat`, `parallel_chat`, etc.) |
 | `R/ellmer.extensions-package.R` | Package-level documentation, `@import S7`, `@importFrom rlang %\|\|%` |
 
@@ -88,10 +92,31 @@ Opt-in via `cache_ttl` parameter in `chat_gemini_extended()`. When set, batch op
 
 **TTL recommendation:** `86400` (24 hours) for batch jobs. Gemini batches can run up to 24 hours; shorter TTLs risk expiring mid-batch. `cache_ttl < 60` produces a warning.
 
+### Anthropic Extended Thinking + Structured Output
+
+`chat_anthropic_extended()` solves the conflict between Anthropic's extended thinking and structured output. The issue: `ellmer::chat_anthropic()` uses `tool_choice: {type: "tool", name: "_structured_tool_call"}` for structured output, but Anthropic forbids `tool_choice` with thinking enabled (*"Thinking may not be enabled when tool_choice forces tool use."*).
+
+**Solution:** When thinking is active AND structured output is requested, the provider overrides `chat_body()` to use `output_config.format` with a JSON schema instead of `tool_choice`. The model returns JSON in a `text` content block (not `tool_use`), which `value_turn()` parses into `ContentJson`.
+
+**Key design decisions:**
+- `thinking` parameter: `NULL` (auto-detect from `reasoning_tokens`), `"enabled"` (explicit budget), or `"adaptive"` (Opus/Sonnet 4.6 only)
+- No `{data: ...}` wrapper — schema matches the user's type directly, `ContentJson(data = parsed)` from the raw JSON text
+- Real user tools are preserved in the thinking+type path; only the synthetic `_structured_tool_call` tool is omitted
+- Multiple text blocks are joined before JSON parsing (defensive against split responses)
+- When thinking is NOT active, behavior is identical to `ellmer::chat_anthropic()` (forced tool_choice)
+- `thinking = "adaptive"` errors for known 4.5 model IDs, warns for unknown models
+
+**Model compatibility:**
+- `thinking = "enabled"`: All 4.5 models (Haiku 4.5, Sonnet 4.5, Opus 4.5) and later
+- `thinking = "adaptive"`: Opus 4.6, Sonnet 4.6 only
+
+**Future:** If Anthropic lifts the `tool_choice` restriction with thinking, this provider can be simplified back to standard `tool_choice` behavior. Alternatively, `output_config.format` may become the preferred approach for all structured output.
+
 ## Environment Variables
 
 - Groq: `GROQ_API_KEY`
 - Gemini: `GEMINI_API_KEY` (or `GOOGLE_API_KEY`)
+- Anthropic: `ANTHROPIC_API_KEY`
 - Keep `.Renviron` local only; **never commit it**
 - `.Renviron.example` contains placeholder values only
 
@@ -110,6 +135,7 @@ Run from package root:
 - **Groq integration tests** (`test-api-integration.R`): Require `GROQ_API_KEY`; test live chat, structured output, and batch processing.
 - **Gemini unit tests** (`test-provider-gemini.R`): Run offline; test class structure, batch support, and helper functions (`gemini_extract_index`, `gemini_json_fallback`, `gemini_normalize_result`).
 - **Gemini integration tests** (`test-gemini-batch-integration.R`): Require `GEMINI_API_KEY` or `GOOGLE_API_KEY`; poll with bounded timeout (120s) and skip if batch does not finish. A skip is expected behavior under queue pressure.
+- **Anthropic unit tests** (`test-provider-anthropic.R`): Run offline; test class structure, thinking parameter validation, `chat_body` construction (output_config vs tool_choice routing), and `value_turn` JSON-from-text parsing.
 - **Linting** configured via `.lintr` with `line_length_linter(120)`, `object_name_linter = NULL` (S7 PascalCase), `object_length_linter = NULL`.
 
 ## Repo Hygiene

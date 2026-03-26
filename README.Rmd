@@ -24,10 +24,12 @@ knitr::opts_chunk$set(
 
 - `chat_groq_developer()` for Groq structured outputs and Groq batch support.
 - `chat_gemini_extended()` for Gemini chat plus file-based batch support.
+- `chat_anthropic_extended()` for Anthropic extended thinking with structured output.
 
 The package is fully integrated with ellmer generics like `batch_chat()`,
 `batch_chat_structured()`, `parallel_chat()`, etc. You will need a paid Groq developer
-account for Groq batch processing, and a Gemini API key for Gemini batch processing.
+account for Groq batch processing, a Gemini API key for Gemini batch processing, and
+an Anthropic API key for the Anthropic extended provider.
 
 ## Installation
 
@@ -45,6 +47,7 @@ Set one or both provider keys in `.Renviron` (edit with `usethis::edit_r_environ
 ```
 GROQ_API_KEY=your-groq-key
 GEMINI_API_KEY=your-gemini-key
+ANTHROPIC_API_KEY=your-anthropic-key
 ```
 
 (`GOOGLE_API_KEY` also works for Gemini.)
@@ -258,6 +261,40 @@ The following [Gemini models](https://ai.google.dev/gemini-api/docs/models) supp
 | gemini-2.0-flash-lite |
 
 Use `ellmer::models_google_gemini()` for a full model listing.
+
+## Anthropic extended thinking with structured output
+
+Standard `ellmer::chat_anthropic()` cannot combine extended thinking
+(`reasoning_tokens`) with structured output because Anthropic's API forbids
+`tool_choice` with thinking enabled. `chat_anthropic_extended()` solves this
+by using Anthropic's `output_config.format` (JSON schema) instead of
+`tool_choice` when thinking is active.
+
+```{r}
+library(ellmer.extensions)
+
+chat <- chat_anthropic_extended(
+  model = "claude-sonnet-4-5-20250929",
+  params = ellmer::params(reasoning_tokens = 8192)
+)
+
+# Structured output works with thinking enabled
+type_analysis <- ellmer::type_object(
+  score = ellmer::type_number(),
+  explanation = ellmer::type_string()
+)
+
+result <- chat$chat_structured(
+  "Analyze this text for populist rhetoric...",
+  type = type_analysis
+)
+
+str(result)
+```
+
+When `reasoning_tokens` is present in `params`, thinking is automatically
+enabled. Without `reasoning_tokens`, `chat_anthropic_extended()` behaves
+identically to `ellmer::chat_anthropic()`.
 
 ## License
 
