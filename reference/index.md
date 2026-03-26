@@ -4,6 +4,8 @@
 
 - [`ProviderGroqDeveloper()`](https://xmarquez.github.io/ellmer.extensions/reference/ProviderGroqDeveloper.md)
   : Groq Developer Provider Class
+- [`chat_anthropic_extended()`](https://xmarquez.github.io/ellmer.extensions/reference/chat_anthropic_extended.md)
+  : Chat with Anthropic Models (Extended Thinking + Structured Output)
 - [`chat_gemini_extended()`](https://xmarquez.github.io/ellmer.extensions/reference/chat_gemini_extended.md)
   : Chat with Gemini Models (Extended Batch Support)
 - [`chat_groq_developer()`](https://xmarquez.github.io/ellmer.extensions/reference/chat_groq_developer.md)

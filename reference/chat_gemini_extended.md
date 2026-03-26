@@ -98,4 +98,5 @@ object with Gemini support for:
 [`batch_chat_structured()`](https://ellmer.tidyverse.org/reference/batch_chat.html)
 
 Other chatbots:
+[`chat_anthropic_extended()`](https://xmarquez.github.io/ellmer.extensions/reference/chat_anthropic_extended.md),
 [`chat_groq_developer()`](https://xmarquez.github.io/ellmer.extensions/reference/chat_groq_developer.md)

@@ -9,14 +9,14 @@
 Source:
 [`DESCRIPTION`](https://github.com/xmarquez/ellmer.extensions/blob/master/DESCRIPTION)
 
-Marquez X (2026). *ellmer.extensions: Groq and Gemini Provider
-Extensions for ellmer*. R package version 0.1.0,
+Marquez X (2026). *ellmer.extensions: Groq, Gemini, and Anthropic
+Provider Extensions for ellmer*. R package version 0.2.0,
 <https://github.com/xmarquez/ellmer.extensions>.
 
     @Manual{,
-      title = {ellmer.extensions: Groq and Gemini Provider Extensions for ellmer},
+      title = {ellmer.extensions: Groq, Gemini, and Anthropic Provider Extensions for ellmer},
       author = {Xavier Marquez},
       year = {2026},
-      note = {R package version 0.1.0},
+      note = {R package version 0.2.0},
       url = {https://github.com/xmarquez/ellmer.extensions},
     }

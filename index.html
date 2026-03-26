@@ -5,14 +5,14 @@
 <meta charset="utf-8">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-<title>Groq and Gemini Provider Extensions for ellmer • ellmer.extensions</title>
+<title>Groq, Gemini, and Anthropic Provider Extensions for ellmer • ellmer.extensions</title>
 <script src="deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 <link href="deps/bootstrap-5.3.1/bootstrap.min.css" rel="stylesheet">
 <script src="deps/bootstrap-5.3.1/bootstrap.bundle.min.js"></script><link href="deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
 <link href="deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
-<script src="deps/headroom-0.11.0/headroom.min.js"></script><script src="deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="deps/search-1.0.0/fuse.min.js"></script><script src="deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="pkgdown.js"></script><meta property="og:title" content="Groq and Gemini Provider Extensions for ellmer">
-<meta name="description" content="Provides ellmer provider extensions with full support for Groq structured outputs, batch processing, and parallel execution, plus Gemini file-based batch chat support. Extends ellmer provider classes to add provider-specific batch semantics and compatibility behaviors.">
-<meta property="og:description" content="Provides ellmer provider extensions with full support for Groq structured outputs, batch processing, and parallel execution, plus Gemini file-based batch chat support. Extends ellmer provider classes to add provider-specific batch semantics and compatibility behaviors.">
+<script src="deps/headroom-0.11.0/headroom.min.js"></script><script src="deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="deps/search-1.0.0/fuse.min.js"></script><script src="deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="pkgdown.js"></script><meta property="og:title" content="Groq, Gemini, and Anthropic Provider Extensions for ellmer">
+<meta name="description" content="Provides ellmer provider extensions with full support for Groq structured outputs, batch processing, and parallel execution, Gemini file-based batch chat support, and Anthropic extended thinking with structured output. Extends ellmer provider classes to add provider-specific batch semantics and compatibility behaviors.">
+<meta property="og:description" content="Provides ellmer provider extensions with full support for Groq structured outputs, batch processing, and parallel execution, Gemini file-based batch chat support, and Anthropic extended thinking with structured output. Extends ellmer provider classes to add provider-specific batch semantics and compatibility behaviors.">
 </head>
 <body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
@@ -22,7 +22,7 @@
 
     <a class="navbar-brand me-2" href="index.html">ellmer.extensions</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,7 @@
     <div id="navbar" class="collapse navbar-collapse ms-3">
       <ul class="navbar-nav me-auto">
 <li class="nav-item"><a class="nav-link" href="reference/index.html">Reference</a></li>
+<li class="nav-item"><a class="nav-link" href="news/index.html">Changelog</a></li>
       </ul>
 <ul class="navbar-nav">
 <li class="nav-item"><form class="form-inline" role="search">
@@ -56,8 +57,10 @@
 <code><a href="reference/chat_groq_developer.html">chat_groq_developer()</a></code> for Groq structured outputs and Groq batch support.</li>
 <li>
 <code><a href="reference/chat_gemini_extended.html">chat_gemini_extended()</a></code> for Gemini chat plus file-based batch support.</li>
+<li>
+<code><a href="reference/chat_anthropic_extended.html">chat_anthropic_extended()</a></code> for Anthropic extended thinking with structured output.</li>
 </ul>
-<p>The package is fully integrated with ellmer generics like <code><a href="https://ellmer.tidyverse.org/reference/batch_chat.html" class="external-link">batch_chat()</a></code>, <code><a href="https://ellmer.tidyverse.org/reference/batch_chat.html" class="external-link">batch_chat_structured()</a></code>, <code><a href="https://ellmer.tidyverse.org/reference/parallel_chat.html" class="external-link">parallel_chat()</a></code>, etc. You will need a paid Groq developer account for Groq batch processing, and a Gemini API key for Gemini batch processing.</p>
+<p>The package is fully integrated with ellmer generics like <code><a href="https://ellmer.tidyverse.org/reference/batch_chat.html" class="external-link">batch_chat()</a></code>, <code><a href="https://ellmer.tidyverse.org/reference/batch_chat.html" class="external-link">batch_chat_structured()</a></code>, <code><a href="https://ellmer.tidyverse.org/reference/parallel_chat.html" class="external-link">parallel_chat()</a></code>, etc. You will need a paid Groq developer account for Groq batch processing, a Gemini API key for Gemini batch processing, and an Anthropic API key for the Anthropic extended provider.</p>
 <div class="section level2">
 <h2 id="installation">Installation<a class="anchor" aria-label="anchor" href="#installation"></a>
 </h2>
@@ -71,7 +74,8 @@
 </h2>
 <p>Set one or both provider keys in <code>.Renviron</code> (edit with <code>usethis::edit_r_environ()</code>):</p>
 <div class="sourceCode" id="cb2"><pre class="sourceCode R"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" tabindex="-1"></a>GROQ_API_KEY<span class="ot">=</span>your<span class="sc">-</span>groq<span class="sc">-</span>key</span>
-<span id="cb2-2"><a href="#cb2-2" tabindex="-1"></a>GEMINI_API_KEY<span class="ot">=</span>your<span class="sc">-</span>gemini<span class="sc">-</span>key</span></code></pre></div>
+<span id="cb2-2"><a href="#cb2-2" tabindex="-1"></a>GEMINI_API_KEY<span class="ot">=</span>your<span class="sc">-</span>gemini<span class="sc">-</span>key</span>
+<span id="cb2-3"><a href="#cb2-3" tabindex="-1"></a>ANTHROPIC_API_KEY<span class="ot">=</span>your<span class="sc">-</span>anthropic<span class="sc">-</span>key</span></code></pre></div>
 <p>(<code>GOOGLE_API_KEY</code> also works for Gemini.)</p>
 </div>
 <div class="section level2">
@@ -379,6 +383,32 @@
 </tbody>
 </table>
 <p>Use <code><a href="https://ellmer.tidyverse.org/reference/chat_google_gemini.html" class="external-link">ellmer::models_google_gemini()</a></code> for a full model listing.</p>
+</div>
+<div class="section level2">
+<h2 id="anthropic-extended-thinking-with-structured-output">Anthropic extended thinking with structured output<a class="anchor" aria-label="anchor" href="#anthropic-extended-thinking-with-structured-output"></a>
+</h2>
+<p>Standard <code><a href="https://ellmer.tidyverse.org/reference/chat_anthropic.html" class="external-link">ellmer::chat_anthropic()</a></code> cannot combine extended thinking (<code>reasoning_tokens</code>) with structured output because Anthropic’s API forbids <code>tool_choice</code> with thinking enabled. <code><a href="reference/chat_anthropic_extended.html">chat_anthropic_extended()</a></code> solves this by using Anthropic’s <code>output_config.format</code> (JSON schema) instead of <code>tool_choice</code> when thinking is active.</p>
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/xmarquez/ellmer.extensions" class="external-link">ellmer.extensions</a></span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">chat</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/chat_anthropic_extended.html">chat_anthropic_extended</a></span><span class="op">(</span></span>
+<span>  model <span class="op">=</span> <span class="st">"claude-sonnet-4-5-20250929"</span>,</span>
+<span>  params <span class="op">=</span> <span class="fu">ellmer</span><span class="fu">::</span><span class="fu"><a href="https://ellmer.tidyverse.org/reference/params.html" class="external-link">params</a></span><span class="op">(</span>reasoning_tokens <span class="op">=</span> <span class="fl">8192</span><span class="op">)</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Structured output works with thinking enabled</span></span>
+<span><span class="va">type_analysis</span> <span class="op">&lt;-</span> <span class="fu">ellmer</span><span class="fu">::</span><span class="fu"><a href="https://ellmer.tidyverse.org/reference/type_boolean.html" class="external-link">type_object</a></span><span class="op">(</span></span>
+<span>  score <span class="op">=</span> <span class="fu">ellmer</span><span class="fu">::</span><span class="fu"><a href="https://ellmer.tidyverse.org/reference/type_boolean.html" class="external-link">type_number</a></span><span class="op">(</span><span class="op">)</span>,</span>
+<span>  explanation <span class="op">=</span> <span class="fu">ellmer</span><span class="fu">::</span><span class="fu"><a href="https://ellmer.tidyverse.org/reference/type_boolean.html" class="external-link">type_string</a></span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">result</span> <span class="op">&lt;-</span> <span class="va">chat</span><span class="op">$</span><span class="fu">chat_structured</span><span class="op">(</span></span>
+<span>  <span class="st">"Analyze this text for populist rhetoric..."</span>,</span>
+<span>  type <span class="op">=</span> <span class="va">type_analysis</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/utils/str.html" class="external-link">str</a></span><span class="op">(</span><span class="va">result</span><span class="op">)</span></span></code></pre></div>
+<p>When <code>reasoning_tokens</code> is present in <code>params</code>, thinking is automatically enabled. Without <code>reasoning_tokens</code>, <code><a href="reference/chat_anthropic_extended.html">chat_anthropic_extended()</a></code> behaves identically to <code><a href="https://ellmer.tidyverse.org/reference/chat_anthropic.html" class="external-link">ellmer::chat_anthropic()</a></code>.</p>
 </div>
 <div class="section level2">
 <h2 id="license">License<a class="anchor" aria-label="anchor" href="#license"></a>

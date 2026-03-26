@@ -143,6 +143,7 @@ schema compliance.
   for defining types
 
 Other chatbots:
+[`chat_anthropic_extended()`](https://xmarquez.github.io/ellmer.extensions/reference/chat_anthropic_extended.md),
 [`chat_gemini_extended()`](https://xmarquez.github.io/ellmer.extensions/reference/chat_gemini_extended.md)
 
 ## Examples

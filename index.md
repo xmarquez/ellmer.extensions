@@ -7,13 +7,16 @@
   for Groq structured outputs and Groq batch support.
 - [`chat_gemini_extended()`](https://xmarquez.github.io/ellmer.extensions/reference/chat_gemini_extended.md)
   for Gemini chat plus file-based batch support.
+- [`chat_anthropic_extended()`](https://xmarquez.github.io/ellmer.extensions/reference/chat_anthropic_extended.md)
+  for Anthropic extended thinking with structured output.
 
 The package is fully integrated with ellmer generics like
 [`batch_chat()`](https://ellmer.tidyverse.org/reference/batch_chat.html),
 [`batch_chat_structured()`](https://ellmer.tidyverse.org/reference/batch_chat.html),
 [`parallel_chat()`](https://ellmer.tidyverse.org/reference/parallel_chat.html),
 etc. You will need a paid Groq developer account for Groq batch
-processing, and a Gemini API key for Gemini batch processing.
+processing, a Gemini API key for Gemini batch processing, and an
+Anthropic API key for the Anthropic extended provider.
 
 ## Installation
 
@@ -33,6 +36,7 @@ Set one or both provider keys in `.Renviron` (edit with
 ``` R
 GROQ_API_KEY=your-groq-key
 GEMINI_API_KEY=your-gemini-key
+ANTHROPIC_API_KEY=your-anthropic-key
 ```
 
 (`GOOGLE_API_KEY` also works for Gemini.)
@@ -273,6 +277,45 @@ API:
 Use
 [`ellmer::models_google_gemini()`](https://ellmer.tidyverse.org/reference/chat_google_gemini.html)
 for a full model listing.
+
+## Anthropic extended thinking with structured output
+
+Standard
+[`ellmer::chat_anthropic()`](https://ellmer.tidyverse.org/reference/chat_anthropic.html)
+cannot combine extended thinking (`reasoning_tokens`) with structured
+output because Anthropic’s API forbids `tool_choice` with thinking
+enabled.
+[`chat_anthropic_extended()`](https://xmarquez.github.io/ellmer.extensions/reference/chat_anthropic_extended.md)
+solves this by using Anthropic’s `output_config.format` (JSON schema)
+instead of `tool_choice` when thinking is active.
+
+``` r
+library(ellmer.extensions)
+
+chat <- chat_anthropic_extended(
+  model = "claude-sonnet-4-5-20250929",
+  params = ellmer::params(reasoning_tokens = 8192)
+)
+
+# Structured output works with thinking enabled
+type_analysis <- ellmer::type_object(
+  score = ellmer::type_number(),
+  explanation = ellmer::type_string()
+)
+
+result <- chat$chat_structured(
+  "Analyze this text for populist rhetoric...",
+  type = type_analysis
+)
+
+str(result)
+```
+
+When `reasoning_tokens` is present in `params`, thinking is
+automatically enabled. Without `reasoning_tokens`,
+[`chat_anthropic_extended()`](https://xmarquez.github.io/ellmer.extensions/reference/chat_anthropic_extended.md)
+behaves identically to
+[`ellmer::chat_anthropic()`](https://ellmer.tidyverse.org/reference/chat_anthropic.html).
 
 ## License
 
