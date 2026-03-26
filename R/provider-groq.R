@@ -360,6 +360,17 @@ register_groq_methods <- function() {
     register_gemini_methods()
   }), error = function(e) NULL)
 
+  # Create Anthropic provider class and register methods
+  tryCatch(suppressMessages({
+    ProviderAnthropic <- ellmer_ns$ProviderAnthropic
+    ProviderAnthropicExtended <<- S7::new_class(
+      name = "ProviderAnthropicExtended",
+      package = "ellmer.extensions",
+      parent = ProviderAnthropic
+    )
+    register_anthropic_methods()
+  }), error = function(e) NULL)
+
   # Finalize S7 method registration for cross-package dispatch
   tryCatch(suppressMessages(S7::methods_register()), error = function(e) NULL)
 }

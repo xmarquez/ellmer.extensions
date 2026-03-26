@@ -1,11 +1,12 @@
 Package: ellmer.extensions
-Title: Groq and Gemini Provider Extensions for ellmer
-Version: 0.1.0
+Title: Groq, Gemini, and Anthropic Provider Extensions for ellmer
+Version: 0.2.0
 Authors@R:
     person("Xavier", "Marquez", , "marquez.x@gmail.com", role = c("aut", "cre"))
 Description: Provides ellmer provider extensions with full support for Groq
-    structured outputs, batch processing, and parallel execution, plus Gemini
-    file-based batch chat support. Extends ellmer provider classes to add
+    structured outputs, batch processing, and parallel execution, Gemini
+    file-based batch chat support, and Anthropic extended thinking with
+    structured output. Extends ellmer provider classes to add
     provider-specific batch semantics and compatibility behaviors.
 License: MIT + file LICENSE
 Encoding: UTF-8

@@ -65,6 +65,7 @@ provider subclass that implements batch methods required by ellmer.
 \code{\link[ellmer:chat_google_gemini]{ellmer::chat_google_gemini()}}, \code{\link[=batch_chat]{batch_chat()}}, \code{\link[=batch_chat_structured]{batch_chat_structured()}}
 
 Other chatbots: 
+\code{\link{chat_anthropic_extended}()},
 \code{\link{chat_groq_developer}()}
 }
 \concept{chatbots}

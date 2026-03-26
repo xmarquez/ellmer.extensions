@@ -134,6 +134,7 @@ results <- parallel_chat(
 }
 
 Other chatbots: 
+\code{\link{chat_anthropic_extended}()},
 \code{\link{chat_gemini_extended}()}
 }
 \concept{chatbots}

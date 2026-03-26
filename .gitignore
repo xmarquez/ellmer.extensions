@@ -36,5 +36,8 @@ docs
 /.quarto/
 **/*.quarto_ipynb
 
+# Rendered README
+README.html
+
 # Windows reserved device name artifact
 nul
