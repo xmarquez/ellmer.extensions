@@ -1,0 +1,49 @@
+{
+  "id": "msg_01truncated_fixture",
+  "type": "message",
+  "role": "assistant",
+  "model": "claude-sonnet-4-6",
+  "content": [
+    {
+      "type": "thinking",
+      "thinking": "Let me analyze this speech. The speech is primarily a parliamentary procedural critique defending the select committee system.",
+      "signature": "EpFsClkIDBgCKkAHNOJSjrGra2dXuDcA-trimmed-for-fixture-1"
+    },
+    {
+      "type": "text",
+      "text": "{\"score\":0.2,\"explanation\":\"This speech is primarily a parliamentary procedural critique. The speech is overwhelmingly non-populist in character.\",\"populist\":{\"category_1\":\"mean-spirited ideas that are all about shifting around the way the cake is cut up\",\"category_2\":\"\",\"category_3\":\"we need to protect people from their exploitative behaviour\",\"category_4\":\"Has some kind of secret commitment been given to somebody?\",\"category_5\":\"\",\"category_6\":\"\"},\"non_populist\":{\"category_1\":\"There are many, many good employers; they are the overwhelming majority.\",\"category_2\":\"Around 700,000 people change their jobs every year.\",\"category_3\":\"That is our constitutional protection, and this Government is avoiding it.\",\"category_4\":\"I can think of better ways to achieve the Government's ends.\",\"category_5\":\"Select committee hearings allow bills like this one to be changed.\",\"category_6\":\"We have one of the best select committee systems in the world.\"}}"
+    },
+    {
+      "type": "thinking",
+      "thinking": "Let me review my JSON to make sure it's valid. Yes, it looks correct.",
+      "signature": "ErQEClkIDBgCKkBwYPuwSKFj5Qnl-trimmed-for-fixture-2"
+    },
+    {
+      "type": "text",
+      "text": "{\"score\":0.2,\"explanation\":\"This speech is primarily a parliamentary procedural critique. The speech is overwhelmingly non-populist in character.\",\"populist\":{\"category_1\":\"mean-spirited ideas that are all about shifting around the way the cake is cut up\",\"category_2\":\"\",\"category_3\":\"we need to protect people from their exploitative behaviour\",\"category_4\":\"Has some kind of secret commitment been given to somebody?\",\"category_5\":\"\",\"category_6\":\"\"},\"non_populist\":{\"category_1\":\"There are many, many good employers; they are the overwhelming majority.\",\"category_2\":\"Around 700,000 people change their jobs every year.\",\"category_3\":\"That is our constitutional protection, and this Government is avoiding it.\",\"category_4\":\"I can think of better ways to achieve the Government's ends.\",\"category_5\":\"Select committee hearings allow bills like this one to be changed.\",\"category_6\":\"We have one of the best select committee systems in the world.\"}}"
+    },
+    {
+      "type": "thinking",
+      "thinking": "I realize I keep repeating the same response in a loop. I need to stop immediately.",
+      "signature": "EtICClkIDBgCKkCVRTFbhTS9K9Lb-trimmed-for-fixture-3"
+    },
+    {
+      "type": "text",
+      "text": "{\"score\":0.2,\"explanation\":\"This speech is primarily a parliamentary procedural critique. The speech is overwhelmingly non-populist in character.\",\"populist\":{\"category_1\":\"mean-spirited ideas"
+    }
+  ],
+  "stop_reason": "max_tokens",
+  "stop_sequence": null,
+  "usage": {
+    "input_tokens": 3,
+    "cache_creation_input_tokens": 51881,
+    "cache_read_input_tokens": 0,
+    "cache_creation": {
+      "ephemeral_5m_input_tokens": 0,
+      "ephemeral_1h_input_tokens": 51881
+    },
+    "output_tokens": 32768,
+    "service_tier": "batch",
+    "inference_geo": "global"
+  }
+}

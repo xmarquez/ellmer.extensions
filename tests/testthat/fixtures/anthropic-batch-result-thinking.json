@@ -1,0 +1,39 @@
+{
+  "id": "msg_0124c3hUY6afrVvkf6M8km8q",
+  "type": "message",
+  "role": "assistant",
+  "model": "claude-sonnet-4-6",
+  "content": [
+    {
+      "type": "thinking",
+      "thinking": "Let me analyze this speech by Hon Jim Anderton (Minister for Biosecurity) given in the New Zealand Parliament on 20 March 2008, using the populism rubric from the training.\n\nThis speech is about the Biosecurity and Hazardous Substances and New Organisms Legislation Amendment Bill. It's a highly technical legislative speech. The speech scores 0.0 on populism—it's remarkably technical and procedural, with no appeals to \"the people\" or anti-elite framing, just a minister walking through the legislative mechanics of validating an import health standard.",
+      "signature": "EsE0ClkIDBgCKkDYXGqgqSC1unC9aUqU-trimmed-for-fixture"
+    },
+    {
+      "type": "text",
+      "text": "{\"score\":0.0,\"explanation\":\"This speech by Jim Anderton is a quintessential ministerial second-reading speech on a narrow piece of biosecurity legislation. It is entirely technocratic and procedural in character, explaining the legal necessity of the bill following a Court of Appeal judgment, the technical differences between two statutory regimes, and the government's response to submissions from affected industries. There are no populist elements present in any meaningful sense.\",\"populist\":{\"category_1\":\"\",\"category_2\":\"\",\"category_3\":\"\",\"category_4\":\"\",\"category_5\":\"\",\"category_6\":\"\"},\"non_populist\":{\"category_1\":\"biosecurity management at the border is a difficult balancing act with a range of competing interests, and it is essential that we do it as well as we possibly can\",\"category_2\":\"The likelihood of establishment must be considered in the case of incidental importations, whereas establishment in New Zealand must be assumed in the case of deliberate importations.\",\"category_3\":\"\",\"category_4\":\"I can certainly understand that perspective and why members of this House would be concerned about that.\",\"category_5\":\"This bill was introduced as a measure specifically to address the problems resulting from the Court of Appeal's decision, and it needs to be passed promptly.\",\"category_6\":\"The select committee also received advice on this issue from the Legislation Advisory Committee, which concluded that the retrospective validation of the import health standard can be justified.\"}}"
+    },
+    {
+      "type": "thinking",
+      "thinking": "Let me review my response to make sure it's valid JSON and matches the required schema.",
+      "signature": "EpIHClkIDBgCKkBrViu5OziQOIgPSx92-trimmed-for-fixture"
+    },
+    {
+      "type": "text",
+      "text": "{\"score\":0.0,\"explanation\":\"This speech by Jim Anderton is a quintessential ministerial second-reading speech on a narrow piece of biosecurity legislation. It is entirely technocratic and procedural in character, explaining the legal necessity of the bill following a Court of Appeal judgment, the technical differences between two statutory regimes, and the government's response to submissions from affected industries. There are no populist elements present in any meaningful sense.\",\"populist\":{\"category_1\":\"\",\"category_2\":\"\",\"category_3\":\"\",\"category_4\":\"\",\"category_5\":\"\",\"category_6\":\"\"},\"non_populist\":{\"category_1\":\"biosecurity management at the border is a difficult balancing act with a range of competing interests, and it is essential that we do it as well as we possibly can\",\"category_2\":\"The likelihood of establishment must be considered in the case of incidental importations, whereas establishment in New Zealand must be assumed in the case of deliberate importations.\",\"category_3\":\"\",\"category_4\":\"I can certainly understand that perspective and why members of this House would be concerned about that.\",\"category_5\":\"This bill was introduced as a measure specifically to address the problems resulting from the Court of Appeal's decision, and it needs to be passed promptly.\",\"category_6\":\"The select committee also received advice on this issue from the Legislation Advisory Committee, which concluded that the retrospective validation of the import health standard can be justified.\"}}"
+    }
+  ],
+  "stop_reason": "end_turn",
+  "usage": {
+    "input_tokens": 3,
+    "cache_creation_input_tokens": 3775,
+    "cache_read_input_tokens": 48479,
+    "cache_creation": {
+      "ephemeral_5m_input_tokens": 0,
+      "ephemeral_1h_input_tokens": 3775
+    },
+    "output_tokens": 2859,
+    "service_tier": "batch",
+    "inference_geo": "global"
+  }
+}

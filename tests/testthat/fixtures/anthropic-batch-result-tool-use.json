@@ -1,0 +1,46 @@
+{
+  "type": "succeeded",
+  "message": {
+    "model": "claude-sonnet-4-5-20250929",
+    "id": "msg_01VQakqsXL4cskS2wgki2TbP",
+    "type": "message",
+    "role": "assistant",
+    "content": [
+      {
+        "type": "tool_use",
+        "id": "toolu_01QCeVkbnb5nhMimvxR9tFHo",
+        "name": "_structured_tool_call",
+        "input": {
+          "data": {
+            "score": 0.4,
+            "explanation": "Jim Anderton's valedictory speech contains very modest populist elements but is fundamentally non-populist in character.",
+            "populist": {
+              "category_1": "",
+              "category_2": "",
+              "category_3": "Growing up in poorer working-class suburbs of Auckland.",
+              "category_4": "The gap between rich and poor widened by 127 percent.",
+              "category_5": "",
+              "category_6": ""
+            },
+            "non_populist": {
+              "category_1": "There are now more Maori, as well as Asian and Pacific, MPs.",
+              "category_2": "GDP between 1984 and 1993 grew by half a percent a year on average.",
+              "category_3": "So MMP was the right choice for New Zealand.",
+              "category_4": "I pay tribute to Helen Clark.",
+              "category_5": "One bad day in Government is better than a thousand good days in Opposition.",
+              "category_6": "We have Kiwibank and Air New Zealand to remind us."
+            }
+          }
+        }
+      }
+    ],
+    "stop_reason": "tool_use",
+    "usage": {
+      "input_tokens": 25,
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 53714,
+      "output_tokens": 1195,
+      "service_tier": "batch"
+    }
+  }
+}

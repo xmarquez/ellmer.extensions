@@ -1,0 +1,37 @@
+{
+  "status_code": 200,
+  "body": {
+    "modelVersion": "gemini-3.1-pro-preview",
+    "responseId": "TfbCaf32GJCJqtsP29Ki-Ac",
+    "candidates": [
+      {
+        "content": {
+          "role": "model",
+          "parts": [
+            {
+              "thought": true,
+              "text": "Analyzing the speech for populist elements..."
+            },
+            {
+              "thoughtSignature": "EuFgCt5gAb4+test-signature",
+              "text": "{\"score\":0.1,\"explanation\":\"The speech is a valedictory address heavily focused on institutional pluralism and incremental reform.\",\"populist\":{\"category_1\":\"\",\"category_2\":\"\",\"category_3\":\"Growing up in poorer working-class suburbs.\",\"category_4\":\"The promises broken by successive Governments.\",\"category_5\":\"\",\"category_6\":\"\"},\"non_populist\":{\"category_1\":\"Currently, there are 38 women in this Parliament.\",\"category_2\":\"Suicide prevention and drug abuse prevention.\",\"category_3\":\"The poll trends indicated Labour would get no votes.\",\"category_4\":\"I pay tribute to Helen Clark.\",\"category_5\":\"One bad day in Government is better than a thousand good days in Opposition.\",\"category_6\":\"I also pay tribute to parliamentary staff.\"}}"
+            }
+          ]
+        },
+        "finishReason": "STOP"
+      }
+    ],
+    "usageMetadata": {
+      "promptTokenCount": 48000,
+      "candidatesTokenCount": 1200,
+      "totalTokenCount": 49200,
+      "thoughtsTokenCount": 5000,
+      "promptTokensDetails": [
+        {"modality": "TEXT", "tokenCount": 48000}
+      ],
+      "candidatesTokensDetails": [
+        {"modality": "TEXT", "tokenCount": 1200}
+      ]
+    }
+  }
+}

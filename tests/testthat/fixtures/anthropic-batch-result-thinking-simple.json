@@ -1,0 +1,30 @@
+{
+  "id": "msg_01NdZHLMD7gdT34kVkPWJXVd",
+  "type": "message",
+  "role": "assistant",
+  "model": "claude-sonnet-4-6",
+  "content": [
+    {
+      "type": "thinking",
+      "thinking": "Let me analyze this valedictory speech by Jim Anderton. The speech contains scattered mild people-centric and anti-elite elements but is overwhelmingly pluralist, institutional, and autobiographical. The Manichaean element is nearly absent. A score of 0.3 reflects minimal populist elements tempered by dominant pluralist orientation.",
+      "signature": "EpFsClkIDBgCKkAHNOJSjrGra2dXuDcA-trimmed-for-fixture"
+    },
+    {
+      "type": "text",
+      "text": "{\"score\":0.3,\"explanation\":\"This is a valedictory speech by Jim Anderton reflecting on 27 years in the New Zealand Parliament. While it contains scattered mild people-centric and anti-elite elements, it is overwhelmingly pluralist, institutional, and autobiographical in character, making it essentially non-populist.\",\"populist\":{\"category_1\":\"As Irish statesman Edmund Burke once observed: 'All that is necessary for the triumph of evil is that good men to do nothing.'\",\"category_2\":\"in my view New Zealand has never recovered from that enormous chasm.\",\"category_3\":\"Growing up in poorer working-class suburbs of Auckland I noticed that the power pylons were in Mangere, Otahuhu, and Mount Roskill, not in Remuera, Epsom, or St Heliers.\",\"category_4\":\"I remember that 93 percent of the population was against the sale of Telecom in 1990.\",\"category_5\":\"That is why I left the Labour Party in 1989 to form the NewLabour Party.\",\"category_6\":\"\"},\"non_populist\":{\"category_1\":\"Parliament is now more like New Zealand, and if people do not like it they should look in the mirror, because they will see themselves reflected here.\",\"category_2\":\"Compare that to the Clark-led Government of 1999-2008, where in real terms New Zealand's GDP grew by 36 percent.\",\"category_3\":\"There are now more Maori, as well as Asian and Pacific, MPs.\",\"category_4\":\"I also pay tribute to Helen Clark, who had the clearest and most insightful understanding of anyone I have ever worked with in politics.\",\"category_5\":\"only by sitting around the Cabinet table and helping to make the decisions can you make the greatest contribution to the well-being of those you claim to represent.\",\"category_6\":\"It has been a privilege to serve in this House.\"}}"
+    }
+  ],
+  "stop_reason": "end_turn",
+  "usage": {
+    "input_tokens": 3,
+    "cache_creation_input_tokens": 4908,
+    "cache_read_input_tokens": 48479,
+    "cache_creation": {
+      "ephemeral_5m_input_tokens": 0,
+      "ephemeral_1h_input_tokens": 4908
+    },
+    "output_tokens": 4391,
+    "service_tier": "batch",
+    "inference_geo": "global"
+  }
+}

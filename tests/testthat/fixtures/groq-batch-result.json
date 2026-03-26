@@ -1,0 +1,36 @@
+{
+  "status_code": 200,
+  "request_id": "req_01kmgrmvxdejyb63frhz33w3dy",
+  "body": {
+    "id": "chatcmpl-899f1c7c-d8a9-43bc-b578-55c563bce12a",
+    "object": "chat.completion",
+    "created": 1774384219,
+    "model": "openai/gpt-oss-120b",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"score\":1.4,\"explanation\":\"The speech is clearly people-centric, repeatedly emphasizing the struggles of working-class New Zealanders.\",\"populist\":{\"category_1\":\"The gap between rich and poor widened by 127 percent.\",\"category_2\":\"Between 1853 and 1984, 1,102 MPs had been elected.\",\"category_3\":\"I ended up with a Labour electorate committee with 24 members, 23 unemployed.\",\"category_4\":\"To beat the National Party we had to catch the political machine.\",\"category_5\":\"I left the Labour Party in 1989 to form the NewLabour Party.\",\"category_6\":\"\"},\"non_populist\":{\"category_1\":\"There are now more Maori, as well as Asian and Pacific MPs.\",\"category_2\":\"The gap between rich and poor widened by 127 percent in six years.\",\"category_3\":\"93 percent of the population was against the sale of Telecom.\",\"category_4\":\"I pay tribute to Helen Clark, to parliamentary staff.\",\"category_5\":\"Kiwibank and Air New Zealand show publicly owned assets can be run successfully.\",\"category_6\":\"I have been in this House, I respect the process.\"}}",
+          "reasoning": "We need to output JSON with score, explanation, populist categories..."
+        },
+        "logprobs": {},
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "queue_time": 0.0417,
+      "prompt_tokens": 49332,
+      "prompt_time": 2.0474,
+      "completion_tokens": 1502,
+      "completion_time": 3.144,
+      "total_tokens": 50834,
+      "total_time": 5.1914,
+      "completion_tokens_details": {
+        "reasoning_tokens": 809
+      }
+    },
+    "system_fingerprint": "fp_47082602e2",
+    "service_tier": "batch"
+  }
+}
