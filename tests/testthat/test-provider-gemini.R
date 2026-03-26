@@ -220,6 +220,59 @@ test_that("gemini_prepare_batch_body keeps non-empty system instruction", {
   expect_equal(result$system_instruction$parts$text, "You are helpful.")
 })
 
+test_that("value_turn excludes Gemini thought text from structured JSON content", {
+  skip_if_not_installed("ellmer")
+  skip_if(
+    is.null(ellmer.extensions:::ProviderGeminiExtended),
+    "ProviderGeminiExtended not initialized"
+  )
+
+  ellmer_ns <- asNamespace("ellmer")
+
+  tryCatch(suppressMessages(ellmer.extensions:::register_gemini_methods()), error = function(e) NULL)
+
+  provider <- ellmer.extensions:::ProviderGeminiExtended(
+    name = "Google/Gemini",
+    base_url = "https://generativelanguage.googleapis.com/v1beta/",
+    model = "gemini-3.1-pro-preview",
+    params = ellmer_ns$params(),
+    extra_args = list(),
+    credentials = ellmer_ns$as_credentials("test", function() "test_key"),
+    extra_headers = character()
+  )
+
+  result <- list(
+    candidates = list(
+      list(
+        content = list(
+          parts = list(
+            list(thought = TRUE, text = "Thinking through the answer..."),
+            list(
+              thoughtSignature = "sig",
+              text = '{"score":0.2,"explanation":"ok","populist":{},"non_populist":{}}'
+            )
+          )
+        )
+      )
+    ),
+    usageMetadata = list(
+      promptTokenCount = 10L,
+      candidatesTokenCount = 5L,
+      totalTokenCount = 15L
+    )
+  )
+
+  turn <- ellmer_ns$value_turn(provider, result, has_type = TRUE)
+
+  text_items <- Filter(function(x) any(grepl("ContentText", class(x))), turn@contents)
+  json_items <- Filter(function(x) any(grepl("ContentJson", class(x))), turn@contents)
+
+  expect_length(text_items, 1)
+  expect_length(json_items, 1)
+  expect_match(text_items[[1]]@text, "Thinking through the answer")
+  expect_equal(json_items[[1]]@parsed$score, 0.2)
+})
+
 # Batch support -----------------------------------------------------------
 
 test_that("batch_status keeps working when succeeded but no responsesFile", {

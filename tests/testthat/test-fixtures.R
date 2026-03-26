@@ -24,6 +24,18 @@ get_json_data <- function(content_json) {
   else content_json@parsed
 }
 
+# Helper: extract structured data from a turn using ellmer internals
+extract_turn_data <- function(turn, type) {
+  ellmer_ns <- asNamespace("ellmer")
+  extract_data <- get("extract_data", envir = ellmer_ns)
+  extract_data(
+    turn = turn,
+    type = type,
+    convert = FALSE,
+    needs_wrapper = FALSE
+  )
+}
+
 # Gemini fixture tests ---------------------------------------------------
 
 test_that("batch_result_turn parses real Gemini batch result with thinking", {
@@ -56,20 +68,29 @@ test_that("batch_result_turn parses real Gemini batch result with thinking", {
 
   expect_equal(turn@role, "assistant")
 
-  # Gemini value_turn with has_type = TRUE creates ContentJson(string = ...) for
+  type_answer <- ellmer::type_object(
+    score = ellmer::type_number(),
+    explanation = ellmer::type_string(),
+    populist = ellmer::type_object(),
+    non_populist = ellmer::type_object()
+  )
 
-  # each text part. The thinking part and the output part both become ContentJson.
-  # The last one contains the actual structured output.
+  # Thought text should remain plain text while the final structured response
+  # is the only ContentJson payload.
+  expect_true(has_content_class(turn, "ContentText"))
   json_items <- get_all_content(turn, "ContentJson")
-  expect_gte(length(json_items), 1)
+  expect_length(json_items, 1)
 
-  # The last ContentJson should be the structured output
-  output_json <- json_items[[length(json_items)]]
+  output_json <- json_items[[1]]
   parsed <- get_json_data(output_json)
   expect_equal(parsed$score, 0.1)
   expect_true(nzchar(parsed$explanation))
   expect_true(is.list(parsed$populist))
   expect_true(is.list(parsed$non_populist))
+
+  extracted <- extract_turn_data(turn, type_answer)
+  expect_equal(extracted$score, 0.1)
+  expect_true(nzchar(extracted$explanation))
 })
 
 # Groq fixture tests -----------------------------------------------------

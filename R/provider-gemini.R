@@ -243,6 +243,14 @@ register_gemini_methods <- function() {
   batch_result_turn <- ellmer_ns$batch_result_turn
   chat_body <- ellmer_ns$chat_body
   value_turn <- ellmer_ns$value_turn
+  ContentJson <- ellmer_ns$ContentJson
+  ContentText <- ellmer_ns$ContentText
+  ContentToolRequest <- ellmer_ns$ContentToolRequest
+  ContentImageInline <- ellmer_ns$ContentImageInline
+  AssistantTurn <- ellmer_ns$AssistantTurn
+  value_tokens <- ellmer_ns$value_tokens
+  get_token_cost <- ellmer_ns$get_token_cost
+  compact <- ellmer_ns$compact
 
   S7::method(has_batch_support, ProviderGeminiExtended) <- function(provider) {
     TRUE
@@ -468,6 +476,43 @@ register_gemini_methods <- function() {
     ids <- vapply(normalized, function(x) x$index, integer(1))
     results <- lapply(normalized, function(x) x$result)
     results[order(ids)]
+  }
+
+  S7::method(value_turn, ProviderGeminiExtended) <- function(
+    provider,
+    result,
+    has_type = FALSE
+  ) {
+    message <- result$candidates[[1]]$content
+    contents <- lapply(message$parts, function(content) {
+      if (rlang::has_name(content, "text")) {
+        if (has_type && !isTRUE(content$thought)) {
+          ContentJson(string = content$text)
+        } else {
+          ContentText(content$text)
+        }
+      } else if (rlang::has_name(content, "functionCall")) {
+        ContentToolRequest(
+          content$functionCall$name,
+          content$functionCall$name,
+          content$functionCall$args
+        )
+      } else if (rlang::has_name(content, "inlineData")) {
+        ContentImageInline(
+          type = content$inlineData$mimeType,
+          data = content$inlineData$data
+        )
+      } else {
+        cli::cli_abort(
+          "Unknown content type with names {.str {names(content)}}.",
+          .internal = TRUE
+        )
+      }
+    })
+    contents <- compact(contents)
+    tokens <- value_tokens(provider, result)
+    cost <- get_token_cost(provider, tokens)
+    AssistantTurn(contents, json = result, tokens = unlist(tokens), cost = cost)
   }
 
   S7::method(batch_result_turn, ProviderGeminiExtended) <- function(
