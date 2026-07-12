@@ -6,6 +6,7 @@
 #' the Anthropic API conflict: *"Thinking may not be enabled when tool_choice
 #' forces tool use."*
 #'
+#' @usage NULL
 #' @keywords internal
 ProviderAnthropicExtended <- NULL
 

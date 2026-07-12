@@ -3,17 +3,6 @@
 \name{ProviderGeminiExtended}
 \alias{ProviderGeminiExtended}
 \title{Gemini Provider with Batch API Support}
-\usage{
-ProviderGeminiExtended(
-  name = stop("Required"),
-  model = stop("Required"),
-  base_url = stop("Required"),
-  params = list(),
-  extra_args = list(),
-  extra_headers = character(0),
-  credentials = function() NULL
-)
-}
 \description{
 Internal S7 class that extends \code{ellmer::ProviderGoogleGemini} with
 file-based batch support for \code{batch_chat()} and \code{batch_chat_structured()}.

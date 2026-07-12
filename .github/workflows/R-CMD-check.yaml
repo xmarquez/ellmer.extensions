@@ -60,7 +60,7 @@ jobs:
       matrix:
         include:
           - ellmer-label: minimum
-            ellmer-package: any::ellmer@0.4.0
+            ellmer-package: cran::ellmer@0.4.0
           - ellmer-label: development
             ellmer-package: tidyverse/ellmer
 

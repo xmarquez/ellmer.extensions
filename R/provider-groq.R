@@ -18,6 +18,7 @@
 #' Users should typically use [chat_groq_developer()] instead of calling this
 #' constructor directly. This class is exported for advanced use cases.
 #'
+#' @usage NULL
 #' @seealso [chat_groq_developer()] for creating chat objects
 #'
 #' @export

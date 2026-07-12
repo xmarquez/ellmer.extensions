@@ -3,17 +3,6 @@
 \name{ProviderGroqDeveloper}
 \alias{ProviderGroqDeveloper}
 \title{Groq Developer Provider Class}
-\usage{
-ProviderGroqDeveloper(
-  name = stop("Required"),
-  model = stop("Required"),
-  base_url = stop("Required"),
-  params = list(),
-  extra_args = list(),
-  extra_headers = character(0),
-  credentials = function() NULL
-)
-}
 \arguments{
 \item{name}{Provider name}
 

@@ -3,19 +3,6 @@
 \name{ProviderAnthropicExtended}
 \alias{ProviderAnthropicExtended}
 \title{Anthropic Provider with Extended Thinking + Structured Output}
-\usage{
-ProviderAnthropicExtended(
-  name = stop("Required"),
-  model = stop("Required"),
-  base_url = stop("Required"),
-  params = list(),
-  extra_args = list(),
-  extra_headers = character(0),
-  credentials = function() NULL,
-  beta_headers = character(0),
-  cache = stop("Required")
-)
-}
 \description{
 Internal S7 class that extends \code{ellmer::ProviderAnthropic} with support for
 extended thinking combined with structured output. When thinking is active,
