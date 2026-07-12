@@ -60,9 +60,11 @@ jobs:
       matrix:
         include:
           - ellmer-label: minimum
-            ellmer-package: cran::ellmer@0.4.0
+            ellmer-packages: |
+              cran::ellmer@0.4.0
+              cran::shinychat@0.2.0
           - ellmer-label: development
-            ellmer-package: tidyverse/ellmer
+            ellmer-packages: tidyverse/ellmer
 
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
@@ -82,7 +84,7 @@ jobs:
         with:
           extra-packages: |
             any::rcmdcheck
-            ${{ matrix.ellmer-package }}
+            ${{ matrix.ellmer-packages }}
           needs: check
 
       - uses: r-lib/actions/check-r-package@v2
