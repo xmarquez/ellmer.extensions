@@ -3,14 +3,10 @@
 ## Package Overview
 
 - **Package name:** `ellmer.extensions`
-- **Purpose:** Extend [ellmer](https://github.com/tidyverse/ellmer)
-  with:
-  - Groq provider support (`chat_groq_developer`,
-    `ProviderGroqDeveloper`)
-  - Gemini file-based batch support (`chat_gemini_extended`,
-    `ProviderGeminiExtended`)
-  - Anthropic extended thinking + structured output
-    (`chat_anthropic_extended`, `ProviderAnthropicExtended`)
+- **Purpose:** Preserve backward-compatible provider entry points while
+  using native [ellmer](https://github.com/tidyverse/ellmer)
+  functionality when it is available. The remaining extension-specific
+  feature is opt-in Gemini batch context caching.
 - **Origin:** Cloned from `groqDeveloper` and adapted with Gemini batch
   functionality.
 
@@ -22,8 +18,8 @@ All provider classes are created dynamically in `.onLoad` (in
 `R/provider-groq.R`) because they extend ellmer classes that aren’t
 available at package build time:
 
-- `ProviderGroqDeveloper` extends `ellmer::ProviderOpenAICompatible`
-  (Chat Completions API format)
+- `ProviderGroqDeveloper` extends native `ellmer::ProviderGroq` when
+  available, otherwise `ellmer::ProviderOpenAICompatible`
 - `ProviderGeminiExtended` extends `ellmer::ProviderGoogleGemini`
 - `ProviderAnthropicExtended` extends `ellmer::ProviderAnthropic`
 
@@ -32,33 +28,31 @@ Method registration uses
 calls inside `register_groq_methods()`, `register_gemini_methods()`, and
 `register_anthropic_methods()`, followed by
 [`S7::methods_register()`](https://rconsortium.github.io/S7/reference/methods_register.html).
-Each provider’s class creation and method registration is wrapped in its
-own `tryCatch(suppressMessages(...))` block so that a failure in one
-provider does not prevent the others from initializing.
+Initialization errors are not swallowed: a package load must fail rather
+than leave exported constructors backed by `NULL` classes.
 
 ### Key Files
 
-| File                            | Purpose                                                                                                                                                       |
-|---------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `R/chat-groq.R`                 | Groq chat constructor, [`models_groq()`](https://xmarquez.github.io/ellmer.extensions/reference/models_groq.md), utility functions (`key_get`, `set_default`) |
-| `R/provider-groq.R`             | `ProviderGroqDeveloper` class, Groq batch methods, schema methods, `.onLoad`                                                                                  |
-| `R/chat-gemini.R`               | Gemini chat constructor (`chat_gemini_extended`)                                                                                                              |
-| `R/provider-gemini.R`           | `ProviderGeminiExtended` class, Gemini batch upload/submit/poll/status/retrieve methods                                                                       |
-| `R/chat-anthropic.R`            | Anthropic chat constructor (`chat_anthropic_extended`)                                                                                                        |
-| `R/provider-anthropic.R`        | `ProviderAnthropicExtended` class, chat_body and value_turn overrides                                                                                         |
-| `R/reexports.R`                 | Re-exports ellmer generics (`batch_chat`, `parallel_chat`, etc.)                                                                                              |
-| `R/ellmer.extensions-package.R` | Package-level documentation, `@import S7`, `@importFrom rlang %\|\|%`                                                                                         |
+| File | Purpose |
+|----|----|
+| `R/chat-groq.R` | Groq chat constructor, [`models_groq()`](https://xmarquez.github.io/ellmer.extensions/reference/models_groq.md), utility functions (`key_get`, `set_default`) |
+| `R/provider-groq.R` | Groq reasoning parameter forwarding, legacy batch compatibility, `.onLoad` |
+| `R/chat-gemini.R` | Gemini chat constructor (`chat_gemini_extended`) |
+| `R/provider-gemini.R` | Native Gemini batch delegation, legacy compatibility, context caching |
+| `R/chat-anthropic.R` | Anthropic chat constructor (`chat_anthropic_extended`) |
+| `R/provider-anthropic.R` | `ProviderAnthropicExtended` class, chat_body and value_turn overrides |
+| `R/reexports.R` | Re-exports ellmer generics (`batch_chat`, `parallel_chat`, etc.) |
+| `R/ellmer.extensions-package.R` | Package-level documentation, `@import S7`, `@importFrom rlang %\|\|%` |
 
 ### Groq Design Notes
 
-- Uses OpenAI Chat Completions API format (via
-  `ProviderOpenAICompatible`)
-- Schema override adds `additionalProperties: false` recursively for
-  Groq’s strict JSON validation
-- Batch API: upload JSONL -\> create batch job -\> poll -\> download
-  results
-- Batch processing at 50% cost discount, completion window 24h (usually
-  seconds)
+- Native Groq provider and batch methods are inherited when ellmer
+  supplies them.
+- Older ellmer releases use the compatibility batch methods, which reuse
+  ellmer’s OpenAI upload, download, NDJSON, and parsing helpers.
+- `reasoning_effort` is forwarded through `chat_params()` and
+  `chat_body()` so it reaches synchronous and batch requests. `api_args`
+  takes precedence.
 
 ### URL Path Construction
 
@@ -68,6 +62,7 @@ Use **bare segment names** in
 (e.g. `//files//id//content`) that may break on strict routers.
 
 ``` r
+
 # GOOD
 req_url_path_append(req, "files", id, "content")
 
@@ -99,23 +94,13 @@ req_url_path_append(req, "/files/", id, "/content")
     accepts the newer name).
   - Empty `system_instruction` blocks (e.g. `{"parts": {"text": ""}}`)
     are rejected; `gemini_prepare_batch_body()` strips these.
-- Batch output line format is normalized defensively to handle both:
-  - Plain `GenerateContentResponse` lines
-  - Wrapped `response/error/status` variants
-- Batch method registration is done in `.onLoad`, with a defensive
-  re-registration in
-  [`chat_gemini_extended()`](https://xmarquez.github.io/ellmer.extensions/reference/chat_gemini_extended.md)
-  to support `devtools::load_all()` workflows.
-- `batch_retrieve` checks multiple paths for `responsesFile`
-  (`response$output$responsesFile`, `response$responsesFile`,
-  `metadata$output$responsesFile`) because the Gemini API response
-  structure varies between API versions.
-- 50% cost discount, target 24-hour turnaround, 2 GB max file size,
-  48-hour expiry
-- Structured output via
-  [`batch_chat_structured()`](https://ellmer.tidyverse.org/reference/batch_chat.html)
-  may not be supported on all Gemini models (HTTP 400); integration
-  tests handle this gracefully
+- Current ellmer owns ordinary batch submission, polling, retrieval, and
+  response parsing. This package wraps submit/poll/retrieve only when
+  `cache_ttl` is used.
+- ellmer 0.4.0 retains the local file-mode compatibility implementation.
+- Legacy output handling follows the observed wrapped
+  `response/error/status` fixture shape and preserves thinking blocks
+  and thought signatures.
 
 ### Gemini Context Caching
 
@@ -140,8 +125,8 @@ a package-level env) so it survives `wait=FALSE` → resume cycles
 (BatchJob serializes `self$batch` to JSON) - `jsonlite` preserves
 dot-prefixed field names through `toJSON`/`fromJSON` round-trip - System
 prompt validation: caching only activates when all conversations share
-an identical system prompt text - Cache creation failure falls back
-silently to non-cached batch (with a warning) - All cache API calls use
+an identical system prompt text - Cache creation failure falls back to a
+non-cached batch with a warning - All cache API calls use
 `base_request(provider)` to respect custom `base_url` - S7 value
 semantics: `attr(provider, ".gemini_cache_ttl")` is set in
 [`chat_gemini_extended()`](https://xmarquez.github.io/ellmer.extensions/reference/chat_gemini_extended.md)
@@ -151,7 +136,7 @@ provider, carries the cache name)
 
 **TTL recommendation:** `86400` (24 hours) for batch jobs. Gemini
 batches can run up to 24 hours; shorter TTLs risk expiring mid-batch.
-`cache_ttl < 60` produces a warning.
+`cache_ttl < 60` is rejected.
 
 ### Anthropic Extended Thinking + Structured Output
 
@@ -171,25 +156,17 @@ model returns JSON in a `text` content block (not `tool_use`), which
 `value_turn()` parses into `ContentJson`.
 
 **Key design decisions:** - `thinking` parameter: `NULL` (auto-detect
-from `reasoning_tokens`), `"enabled"` (explicit budget), or `"adaptive"`
-(Opus/Sonnet 4.6 only) - No `{data: ...}` wrapper — schema matches the
-user’s type directly, `ContentJson(data = parsed)` from the raw JSON
-text - Real user tools are preserved in the thinking+type path; only the
-synthetic `_structured_tool_call` tool is omitted - Multiple text blocks
-are joined before JSON parsing (defensive against split responses) -
-When thinking is NOT active, behavior is identical to
+from `reasoning_tokens`), `"enabled"` (explicit budget), or
+`"adaptive"` - No `{data: ...}` wrapper — schema matches the user’s type
+directly, `ContentJson(data = parsed)` from the raw JSON text - Real
+user tools are preserved in the thinking+type path; only the synthetic
+`_structured_tool_call` tool is omitted - Multiple text blocks are
+joined before JSON parsing (defensive against split responses) - When
+thinking is NOT active, behavior is identical to
 [`ellmer::chat_anthropic()`](https://ellmer.tidyverse.org/reference/chat_anthropic.html)
-(forced tool_choice) - `thinking = "adaptive"` errors for known 4.5
-model IDs, warns for unknown models
-
-**Model compatibility:** - `thinking = "enabled"`: All 4.5 models (Haiku
-4.5, Sonnet 4.5, Opus 4.5) and later - `thinking = "adaptive"`: Opus
-4.6, Sonnet 4.6 only
-
-**Future:** If Anthropic lifts the `tool_choice` restriction with
-thinking, this provider can be simplified back to standard `tool_choice`
-behavior. Alternatively, `output_config.format` may become the preferred
-approach for all structured output.
+(forced tool_choice) - Model capability decisions are delegated to
+ellmer/Anthropic rather than a hard-coded model allowlist. - Adaptive
+effort is sent as `output_config$effort`, not as a top-level field.
 
 ## Environment Variables
 
@@ -210,24 +187,12 @@ Run from package root:
 
 ## Testing Notes
 
-- **Groq unit tests** (`test-provider-groq.R`): Run offline with dummy
-  credentials; test class structure, schema generation, batch support
-  flags.
-- **Groq integration tests** (`test-api-integration.R`): Require
-  `GROQ_API_KEY`; test live chat, structured output, and batch
-  processing.
-- **Gemini unit tests** (`test-provider-gemini.R`): Run offline; test
-  class structure, batch support, and helper functions
-  (`gemini_extract_index`, `gemini_json_fallback`,
-  `gemini_normalize_result`).
-- **Gemini integration tests** (`test-gemini-batch-integration.R`):
-  Require `GEMINI_API_KEY` or `GOOGLE_API_KEY`; poll with bounded
-  timeout (120s) and skip if batch does not finish. A skip is expected
-  behavior under queue pressure.
-- **Anthropic unit tests** (`test-provider-anthropic.R`): Run offline;
-  test class structure, thinking parameter validation, `chat_body`
-  construction (output_config vs tool_choice routing), and `value_turn`
-  JSON-from-text parsing.
+- Offline tests focus on observable request construction and real
+  provider fixtures rather than duplicated class-structure assertions.
+- Live Groq and Gemini smoke tests require
+  `ELLMER_EXTENSIONS_RUN_LIVE_TESTS=true` plus the relevant API key and
+  use a bounded 120-second polling window.
+- CI checks both ellmer 0.4.0 and ellmer development.
 - **Linting** configured via `.lintr` with `line_length_linter(120)`,
   `object_name_linter = NULL` (S7 PascalCase),
   `object_length_linter = NULL`.
@@ -246,19 +211,11 @@ Run from package root:
 - Groq structured outputs do not support streaming or tool use.
 - Gemini batch jobs can remain queued for extended periods; integration
   tests handle this gracefully.
-- The `.onLoad` error handlers silently defer initialization failures
-  (needed for documentation builds); users see informative errors when
-  they try to use provider functions.
 - Heavy reliance on `asNamespace("ellmer")` for internal functions –
   fragile if ellmer renames internals.
-- **S7 segfault on Windows R 4.5.1:** Creating S7 subclasses of ellmer
-  providers (`S7::new_class(parent = ProviderGoogleGemini)`) segfaults
-  when called outside `.onLoad` context. This also affects
-  `S7::method<-` and `register_gemini_methods()` post-load. The classes
-  work correctly when created during `.onLoad`. This is why
-  [`chat_gemini_extended()`](https://xmarquez.github.io/ellmer.extensions/reference/chat_gemini_extended.md)
-  has a defensive `register_gemini_methods()` call, and why the
-  `has_batch_support` test also re-registers defensively.
+- **S7 segfault on Windows R 4.5.1:** Keep subclass creation and method
+  registration in `.onLoad`; constructors must not defensively
+  re-register.
 - **`S7::method<-` prints “Overwriting method” messages** that R CMD
   check treats as unsuppressable startup messages. All registration
   calls must be wrapped in
@@ -268,8 +225,8 @@ Run from package root:
 
 ## Dependencies
 
-Core: `ellmer`, `S7`, `purrr`, `cli`, `httr2`, `curl`, `withr`,
-`jsonlite`, `rlang` Suggests: `testthat`, `lifecycle`
+Core: `ellmer`, `S7`, `purrr`, `cli`, `httr2`, `withr`, `jsonlite`,
+`rlang` Suggests: `testthat`, `lifecycle`
 
 ## CI / Publishing
 

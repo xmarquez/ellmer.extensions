@@ -1,5 +1,34 @@
 # Changelog
 
+## ellmer.extensions 0.3.0
+
+### Compatibility
+
+- Groq, Gemini, and Anthropic constructors now use native `ellmer`
+  functionality when available while retaining legacy implementations
+  for `ellmer` 0.4.0.
+
+- [`chat_groq_developer()`](https://xmarquez.github.io/ellmer.extensions/reference/chat_groq_developer.md)
+  now sends `reasoning_effort` supplied through either
+  [`ellmer::params()`](https://ellmer.tidyverse.org/reference/params.html)
+  or `api_args`, including in durable batch request bodies.
+
+- Gemini batch context caching remains available through `cache_ttl`;
+  native `ellmer` parsing is retained so thinking blocks, thought
+  signatures, and finish reasons are not lost.
+
+- Anthropic adaptive thinking now places effort under `output_config`,
+  and delegates model capability handling to current `ellmer` where
+  possible.
+
+### Testing
+
+- Live provider tests require `ELLMER_EXTENSIONS_RUN_LIVE_TESTS=true`
+  and use a bounded two-minute polling window.
+
+- CI checks both the minimum supported and development versions of
+  `ellmer`.
+
 ## ellmer.extensions 0.2.0
 
 ### New features

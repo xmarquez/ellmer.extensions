@@ -5,14 +5,14 @@
 <meta charset="utf-8">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-<title>Groq, Gemini, and Anthropic Provider Extensions for ellmer • ellmer.extensions</title>
+<title>Groq, Gemini, and Anthropic Provider Extensions for Ellmer • ellmer.extensions</title>
 <script src="deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-<link href="deps/bootstrap-5.3.1/bootstrap.min.css" rel="stylesheet">
-<script src="deps/bootstrap-5.3.1/bootstrap.bundle.min.js"></script><link href="deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
+<link href="deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet">
+<script src="deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
 <link href="deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
-<script src="deps/headroom-0.11.0/headroom.min.js"></script><script src="deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="deps/search-1.0.0/fuse.min.js"></script><script src="deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="pkgdown.js"></script><meta property="og:title" content="Groq, Gemini, and Anthropic Provider Extensions for ellmer">
-<meta name="description" content="Provides ellmer provider extensions with full support for Groq structured outputs, batch processing, and parallel execution, Gemini file-based batch chat support, and Anthropic extended thinking with structured output. Extends ellmer provider classes to add provider-specific batch semantics and compatibility behaviors.">
-<meta property="og:description" content="Provides ellmer provider extensions with full support for Groq structured outputs, batch processing, and parallel execution, Gemini file-based batch chat support, and Anthropic extended thinking with structured output. Extends ellmer provider classes to add provider-specific batch semantics and compatibility behaviors.">
+<script src="deps/headroom-0.11.0/headroom.min.js"></script><script src="deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="deps/search-1.0.0/fuse.min.js"></script><script src="deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="pkgdown.js"></script><meta property="og:title" content="Groq, Gemini, and Anthropic Provider Extensions for Ellmer">
+<meta name="description" content="Provides backward-compatible ellmer provider wrappers for Groq, Gemini, and Anthropic. Uses native ellmer provider functionality when it is available, retains legacy batch compatibility for older ellmer releases, and adds opt-in Gemini batch context caching.">
+<meta property="og:description" content="Provides backward-compatible ellmer provider wrappers for Groq, Gemini, and Anthropic. Uses native ellmer provider functionality when it is available, retains legacy batch compatibility for older ellmer releases, and adds opt-in Gemini batch context caching.">
 </head>
 <body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
@@ -22,7 +22,7 @@
 
     <a class="navbar-brand me-2" href="index.html">ellmer.extensions</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -51,16 +51,16 @@
 </h1></div>
 <!-- badges: start -->
 
-<p><code>ellmer.extensions</code> extends <a href="https://github.com/tidyverse/ellmer" class="external-link">ellmer</a> with:</p>
+<p><code>ellmer.extensions</code> provides backward-compatible entry points for projects that used its Groq, Gemini, and Anthropic providers before the corresponding features were added to <a href="https://github.com/tidyverse/ellmer" class="external-link">ellmer</a>:</p>
 <ul>
 <li>
-<code><a href="reference/chat_groq_developer.html">chat_groq_developer()</a></code> for Groq structured outputs and Groq batch support.</li>
+<code><a href="reference/chat_groq_developer.html">chat_groq_developer()</a></code> for Groq structured outputs and batch support.</li>
 <li>
-<code><a href="reference/chat_gemini_extended.html">chat_gemini_extended()</a></code> for Gemini chat plus file-based batch support.</li>
+<code><a href="reference/chat_gemini_extended.html">chat_gemini_extended()</a></code> for Gemini file-based batches and optional batch context caching.</li>
 <li>
-<code><a href="reference/chat_anthropic_extended.html">chat_anthropic_extended()</a></code> for Anthropic extended thinking with structured output.</li>
+<code><a href="reference/chat_anthropic_extended.html">chat_anthropic_extended()</a></code> for extended or adaptive thinking with structured output.</li>
 </ul>
-<p>The package is fully integrated with ellmer generics like <code><a href="https://ellmer.tidyverse.org/reference/batch_chat.html" class="external-link">batch_chat()</a></code>, <code><a href="https://ellmer.tidyverse.org/reference/batch_chat.html" class="external-link">batch_chat_structured()</a></code>, <code><a href="https://ellmer.tidyverse.org/reference/parallel_chat.html" class="external-link">parallel_chat()</a></code>, etc. You will need a paid Groq developer account for Groq batch processing, a Gemini API key for Gemini batch processing, and an Anthropic API key for the Anthropic extended provider.</p>
+<p>On current ellmer versions the constructors delegate to native provider functionality wherever possible. The bundled implementations remain as a temporary compatibility path for ellmer 0.4.0 and for Gemini batch context caching. The returned chats work with ellmer generics such as <code><a href="https://ellmer.tidyverse.org/reference/batch_chat.html" class="external-link">batch_chat()</a></code>, <code><a href="https://ellmer.tidyverse.org/reference/batch_chat.html" class="external-link">batch_chat_structured()</a></code>, and <code><a href="https://ellmer.tidyverse.org/reference/parallel_chat.html" class="external-link">parallel_chat()</a></code>.</p>
 <div class="section level2">
 <h2 id="installation">Installation<a class="anchor" aria-label="anchor" href="#installation"></a>
 </h2>
@@ -72,7 +72,7 @@
 <div class="section level2">
 <h2 id="setup">Setup<a class="anchor" aria-label="anchor" href="#setup"></a>
 </h2>
-<p>Set one or both provider keys in <code>.Renviron</code> (edit with <code>usethis::edit_r_environ()</code>):</p>
+<p>Set the provider keys you use in <code>.Renviron</code> (edit with <code>usethis::edit_r_environ()</code>):</p>
 <div class="sourceCode" id="cb2"><pre class="sourceCode R"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" tabindex="-1"></a>GROQ_API_KEY<span class="ot">=</span>your<span class="sc">-</span>groq<span class="sc">-</span>key</span>
 <span id="cb2-2"><a href="#cb2-2" tabindex="-1"></a>GEMINI_API_KEY<span class="ot">=</span>your<span class="sc">-</span>gemini<span class="sc">-</span>key</span>
 <span id="cb2-3"><a href="#cb2-3" tabindex="-1"></a>ANTHROPIC_API_KEY<span class="ot">=</span>your<span class="sc">-</span>anthropic<span class="sc">-</span>key</span></code></pre></div>
@@ -87,8 +87,12 @@
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/xmarquez/ellmer.extensions" class="external-link">ellmer.extensions</a></span><span class="op">)</span></span>
 <span></span>
-<span><span class="va">chat_groq</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/chat_groq_developer.html">chat_groq_developer</a></span><span class="op">(</span>model <span class="op">=</span> <span class="st">"openai/gpt-oss-20b"</span><span class="op">)</span></span>
+<span><span class="va">chat_groq</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/chat_groq_developer.html">chat_groq_developer</a></span><span class="op">(</span></span>
+<span>  model <span class="op">=</span> <span class="st">"openai/gpt-oss-20b"</span>,</span>
+<span>  params <span class="op">=</span> <span class="fu">ellmer</span><span class="fu">::</span><span class="fu"><a href="https://ellmer.tidyverse.org/reference/params.html" class="external-link">params</a></span><span class="op">(</span>reasoning_effort <span class="op">=</span> <span class="st">"low"</span><span class="op">)</span></span>
+<span><span class="op">)</span></span>
 <span><span class="va">chat_groq</span><span class="op">$</span><span class="fu">chat</span><span class="op">(</span><span class="st">"What is the capital of France?"</span><span class="op">)</span></span></code></pre></div>
+<p><code>reasoning_effort</code> is included in both synchronous and batch request bodies. Groq’s GPT-OSS models otherwise use the provider default (currently <code>"medium"</code>). Arguments supplied through <code>api_args</code> are also retained for compatibility and take precedence over values in <code>params</code>.</p>
 </div>
 <div class="section level3">
 <h3 id="basic-gemini-chat">Basic Gemini chat<a class="anchor" aria-label="anchor" href="#basic-gemini-chat"></a>
@@ -119,7 +123,7 @@
 <div class="section level3">
 <h3 id="batch-chat-groq">Batch chat (Groq)<a class="anchor" aria-label="anchor" href="#batch-chat-groq"></a>
 </h3>
-<p>Process multiple requests with cost savings using Groq’s batch API. The Groq batch API is typically blazingly fast; though completion is not guaranteed for at least 24 hours, most requests with up to 500 prompts finish in seconds.</p>
+<p>Process multiple requests asynchronously using Groq’s batch API:</p>
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">prompts</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
 <span>  <span class="st">"What is 2 + 2? Reply with only the number."</span>,</span>
@@ -213,181 +217,19 @@
 </ul>
 </div>
 <div class="section level2">
-<h2 id="groq-supported-models">Groq supported models<a class="anchor" aria-label="anchor" href="#groq-supported-models"></a>
+<h2 id="groq-support">Groq support<a class="anchor" aria-label="anchor" href="#groq-support"></a>
 </h2>
-<div class="section level3">
-<h3 id="structured-outputs">Structured outputs<a class="anchor" aria-label="anchor" href="#structured-outputs"></a>
-</h3>
-<p>For strict structured outputs, Groq supports <a href="https://console.groq.com/docs/structured-outputs#supported-models" class="external-link">the following models</a>:</p>
-<p>The following models support <code>strict: true</code>, which uses constrained decoding to guarantee schema-compliant output:</p>
-<table class="table">
-<colgroup>
-<col width="50%">
-<col width="50%">
-</colgroup>
-<thead><tr class="header">
-<th>Model ID</th>
-<th>Model</th>
-</tr></thead>
-<tbody>
-<tr class="odd">
-<td>openai/gpt-oss-20b</td>
-<td><a href="https://console.groq.com/docs/model/openai/gpt-oss-20b" class="external-link">GPT-OSS 20B</a></td>
-</tr>
-<tr class="even">
-<td>openai/gpt-oss-120b</td>
-<td><a href="https://console.groq.com/docs/model/openai/gpt-oss-120b" class="external-link">GPT-OSS 120B</a></td>
-</tr>
-</tbody>
-</table>
-<p>The following models support Structured Outputs with <code>strict: false</code> (default), which attempts schema compliance but may occasionally error:</p>
-<table class="table">
-<colgroup>
-<col width="50%">
-<col width="50%">
-</colgroup>
-<thead><tr class="header">
-<th>Model ID</th>
-<th>Model</th>
-</tr></thead>
-<tbody>
-<tr class="odd">
-<td>openai/gpt-oss-20b</td>
-<td><a href="https://console.groq.com/docs/model/openai/gpt-oss-20b" class="external-link">GPT-OSS 20B</a></td>
-</tr>
-<tr class="even">
-<td>openai/gpt-oss-120b</td>
-<td><a href="https://console.groq.com/docs/model/openai/gpt-oss-120b" class="external-link">GPT-OSS 120B</a></td>
-</tr>
-<tr class="odd">
-<td>openai/gpt-oss-safeguard-20b</td>
-<td><a href="https://console.groq.com/docs/model/openai/gpt-oss-safeguard-20b" class="external-link">Safety GPT OSS 20B</a></td>
-</tr>
-<tr class="even">
-<td>moonshotai/kimi-k2-instruct-0905</td>
-<td><a href="https://console.groq.com/docs/model/moonshotai/kimi-k2-instruct-0905" class="external-link">Kimi K2 Instruct</a></td>
-</tr>
-<tr class="odd">
-<td>meta-llama/llama-4-maverick-17b-128e-instruct</td>
-<td><a href="https://console.groq.com/docs/model/meta-llama/llama-4-maverick-17b-128e-instruct" class="external-link">Llama 4 Maverick</a></td>
-</tr>
-<tr class="even">
-<td>meta-llama/llama-4-scout-17b-16e-instruct</td>
-<td><a href="https://console.groq.com/docs/model/meta-llama/llama-4-scout-17b-16e-instruct" class="external-link">Llama 4 Scout</a></td>
-</tr>
-</tbody>
-</table>
-<p>Streaming and tool use are not currently supported with Structured Outputs on Groq.</p>
-</div>
-<div class="section level3">
-<h3 id="groq-batch-processing">Groq batch processing<a class="anchor" aria-label="anchor" href="#groq-batch-processing"></a>
-</h3>
-<p>For batch processing, <a href="https://console.groq.com/docs/batch#model-availability-and-pricing" class="external-link">Groq supports the following models</a>:</p>
-<table class="table">
-<colgroup>
-<col width="50%">
-<col width="50%">
-</colgroup>
-<thead><tr class="header">
-<th>Model ID</th>
-<th>Model</th>
-</tr></thead>
-<tbody>
-<tr class="odd">
-<td>openai/gpt-oss-20b</td>
-<td><a href="https://console.groq.com/docs/model/openai/gpt-oss-20b" class="external-link">GPT-OSS 20B</a></td>
-</tr>
-<tr class="even">
-<td>openai/gpt-oss-120b</td>
-<td><a href="https://console.groq.com/docs/model/openai/gpt-oss-120b" class="external-link">GPT-OSS 120B</a></td>
-</tr>
-<tr class="odd">
-<td>meta-llama/llama-4-maverick-17b-128e-instruct</td>
-<td><a href="https://console.groq.com/docs/model/meta-llama/llama-4-maverick-17b-128e-instruct" class="external-link">Llama 4 Maverick</a></td>
-</tr>
-<tr class="even">
-<td>meta-llama/llama-4-scout-17b-16e-instruct</td>
-<td><a href="https://console.groq.com/docs/model/meta-llama/llama-4-scout-17b-16e-instruct" class="external-link">Llama 4 Scout</a></td>
-</tr>
-<tr class="odd">
-<td>llama-3.3-70b-versatile</td>
-<td><a href="https://console.groq.com/docs/model/llama-3.3-70b-versatile" class="external-link">Llama 3.3 70B</a></td>
-</tr>
-<tr class="even">
-<td>llama-3.1-8b-instant</td>
-<td><a href="https://console.groq.com/docs/model/llama-3.1-8b-instant" class="external-link">Llama 3.1 8B Instant</a></td>
-</tr>
-<tr class="odd">
-<td>meta-llama/llama-guard-4-12b</td>
-<td><a href="https://console.groq.com/docs/model/meta-llama/llama-guard-4-12b" class="external-link">Llama Guard 4 12B</a></td>
-</tr>
-</tbody>
-</table>
-<p>Pricing is at a 50% cost discount compared to <a href="https://groq.com/pricing" class="external-link">synchronous API pricing</a>. The batch discount does not stack with <a href="https://console.groq.com/docs/prompt-caching" class="external-link">prompt caching</a> discounts; all batch tokens are billed at the 50% batch rate regardless of cache status.</p>
-</div>
+<p>Provider model lists and capabilities change frequently. Use <code><a href="reference/models_groq.html">models_groq()</a></code> for the models available to your account and consult Groq’s current documentation for <a href="https://console.groq.com/docs/structured-outputs" class="external-link">structured outputs</a>, <a href="https://console.groq.com/docs/reasoning" class="external-link">reasoning</a>, and <a href="https://console.groq.com/docs/batch" class="external-link">batch processing</a>.</p>
 </div>
 <div class="section level2">
 <h2 id="gemini-batch-processing">Gemini batch processing<a class="anchor" aria-label="anchor" href="#gemini-batch-processing"></a>
 </h2>
-<p>Gemini batch processing uses the <a href="https://ai.google.dev/gemini-api/docs/batch-api" class="external-link">file-based Batch API</a>:</p>
-<ul>
-<li>Requests are uploaded as a JSONL input file, then submitted via <code>batchGenerateContent</code>.</li>
-<li>Processing is asynchronous at <strong>50% of standard pricing</strong> with a target 24-hour turnaround.</li>
-<li>Maximum input file size: <strong>2 GB</strong>.</li>
-<li>Batch jobs expire after <strong>48 hours</strong> if not completed.</li>
-<li>Context caching is supported for batch requests (cache hits are billed at standard cache pricing).</li>
-</ul>
-<p>Use <code><a href="reference/chat_gemini_extended.html">chat_gemini_extended()</a></code> to create a Gemini chat object with batch support, then pass it to <code><a href="https://ellmer.tidyverse.org/reference/batch_chat.html" class="external-link">batch_chat()</a></code> or <code><a href="https://ellmer.tidyverse.org/reference/batch_chat.html" class="external-link">batch_chat_structured()</a></code>. Use <code><a href="https://ellmer.tidyverse.org/reference/batch_chat.html" class="external-link">batch_chat_completed()</a></code> to check whether a previously submitted batch has finished.</p>
-<p>The following <a href="https://ai.google.dev/gemini-api/docs/models" class="external-link">Gemini models</a> support the Batch API:</p>
-<table class="table">
-<thead><tr class="header">
-<th>Model ID</th>
-</tr></thead>
-<tbody>
-<tr class="odd">
-<td>gemini-3-pro-preview</td>
-</tr>
-<tr class="even">
-<td>gemini-3-pro-image-preview</td>
-</tr>
-<tr class="odd">
-<td>gemini-3-flash-preview</td>
-</tr>
-<tr class="even">
-<td>gemini-2.5-flash</td>
-</tr>
-<tr class="odd">
-<td>gemini-2.5-flash-preview-09-2025</td>
-</tr>
-<tr class="even">
-<td>gemini-2.5-flash-image</td>
-</tr>
-<tr class="odd">
-<td>gemini-2.5-flash-lite</td>
-</tr>
-<tr class="even">
-<td>gemini-2.5-flash-lite-preview-09-2025</td>
-</tr>
-<tr class="odd">
-<td>gemini-2.5-pro</td>
-</tr>
-<tr class="even">
-<td>gemini-2.5-pro-preview-tts</td>
-</tr>
-<tr class="odd">
-<td>gemini-2.0-flash</td>
-</tr>
-<tr class="even">
-<td>gemini-2.0-flash-lite</td>
-</tr>
-</tbody>
-</table>
-<p>Use <code><a href="https://ellmer.tidyverse.org/reference/chat_google_gemini.html" class="external-link">ellmer::models_google_gemini()</a></code> for a full model listing.</p>
+<p>Gemini processing uses the <a href="https://ai.google.dev/gemini-api/docs/batch-api" class="external-link">file-based Batch API</a>. On current ellmer versions, ordinary batch submission and result parsing are delegated upstream. <code>chat_gemini_extended(cache_ttl = 86400)</code> retains this package’s opt-in context cache lifecycle for batch system prompts. Use <code><a href="https://ellmer.tidyverse.org/reference/batch_chat.html" class="external-link">batch_chat_completed()</a></code> to check a previously submitted job, and <code><a href="https://ellmer.tidyverse.org/reference/chat_google_gemini.html" class="external-link">ellmer::models_google_gemini()</a></code> for model discovery.</p>
 </div>
 <div class="section level2">
 <h2 id="anthropic-extended-thinking-with-structured-output">Anthropic extended thinking with structured output<a class="anchor" aria-label="anchor" href="#anthropic-extended-thinking-with-structured-output"></a>
 </h2>
-<p>Standard <code><a href="https://ellmer.tidyverse.org/reference/chat_anthropic.html" class="external-link">ellmer::chat_anthropic()</a></code> cannot combine extended thinking (<code>reasoning_tokens</code>) with structured output because Anthropic’s API forbids <code>tool_choice</code> with thinking enabled. <code><a href="reference/chat_anthropic_extended.html">chat_anthropic_extended()</a></code> solves this by using Anthropic’s <code>output_config.format</code> (JSON schema) instead of <code>tool_choice</code> when thinking is active.</p>
+<p><code><a href="reference/chat_anthropic_extended.html">chat_anthropic_extended()</a></code> preserves the older package interface for combining thinking with structured output. Current ellmer versions handle this natively; older versions use this package’s <code>output_config.format</code> compatibility path.</p>
 <div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/xmarquez/ellmer.extensions" class="external-link">ellmer.extensions</a></span><span class="op">)</span></span>
 <span></span>
@@ -465,7 +307,7 @@
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.0.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.1.</p>
 </div>
 
     </footer>

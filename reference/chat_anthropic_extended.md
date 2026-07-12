@@ -1,13 +1,11 @@
 # Chat with Anthropic Models (Extended Thinking + Structured Output)
 
 Creates a chat interface for Anthropic's Claude API with support for
-extended thinking combined with structured output. Standard
-[`ellmer::chat_anthropic()`](https://ellmer.tidyverse.org/reference/chat_anthropic.html)
-cannot combine thinking (`reasoning_tokens`) with structured output
-because Anthropic's API forbids `tool_choice` with thinking enabled.
-This provider uses Anthropic's `output_config.format` (JSON schema)
-instead of `tool_choice` when thinking is active, avoiding the API
-conflict.
+extended and adaptive thinking combined with structured output. On
+recent versions of ellmer this is a backward-compatible wrapper around
+[`ellmer::chat_anthropic()`](https://ellmer.tidyverse.org/reference/chat_anthropic.html).
+Older versions use the bundled compatibility provider when ellmer does
+not yet provide the requested feature.
 
 When `thinking` is `NULL` (the default), thinking is auto-detected from
 `params`: if `reasoning_tokens` is present, thinking is enabled
@@ -96,8 +94,9 @@ chat_anthropic_extended(
   - `"enabled"`: extended thinking with explicit budget. Requires
     `reasoning_tokens` in `params`.
 
-  - `"adaptive"`: adaptive thinking. Only available on Claude Opus 4.6
-    and Sonnet 4.6; errors for 4.5 model IDs.
+  - `"adaptive"`: adaptive thinking. If `reasoning_effort` is not
+    supplied, it defaults to `"high"`. Model compatibility is determined
+    by Anthropic, rather than by a hard-coded model allowlist.
 
 ## Value
 
@@ -121,14 +120,6 @@ When thinking is not active (no `reasoning_tokens` in `params` and
 `thinking = NULL`), the provider falls back to standard
 `tool_choice`-based structured output (identical to
 [`ellmer::chat_anthropic()`](https://ellmer.tidyverse.org/reference/chat_anthropic.html)).
-
-### Model compatibility
-
-- `thinking = "enabled"`: All Claude 4.5 models (Haiku, Sonnet, Opus)
-  and later. Requires `reasoning_tokens` in `params` to set the thinking
-  budget.
-
-- `thinking = "adaptive"`: Claude Opus 4.6 and Sonnet 4.6 only.
 
 ## See also
 

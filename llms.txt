@@ -1,22 +1,25 @@
 # ellmer.extensions
 
-`ellmer.extensions` extends
-[ellmer](https://github.com/tidyverse/ellmer) with:
+`ellmer.extensions` provides backward-compatible entry points for
+projects that used its Groq, Gemini, and Anthropic providers before the
+corresponding features were added to
+[ellmer](https://github.com/tidyverse/ellmer):
 
 - [`chat_groq_developer()`](https://xmarquez.github.io/ellmer.extensions/reference/chat_groq_developer.md)
-  for Groq structured outputs and Groq batch support.
+  for Groq structured outputs and batch support.
 - [`chat_gemini_extended()`](https://xmarquez.github.io/ellmer.extensions/reference/chat_gemini_extended.md)
-  for Gemini chat plus file-based batch support.
+  for Gemini file-based batches and optional batch context caching.
 - [`chat_anthropic_extended()`](https://xmarquez.github.io/ellmer.extensions/reference/chat_anthropic_extended.md)
-  for Anthropic extended thinking with structured output.
+  for extended or adaptive thinking with structured output.
 
-The package is fully integrated with ellmer generics like
+On current ellmer versions the constructors delegate to native provider
+functionality wherever possible. The bundled implementations remain as a
+temporary compatibility path for ellmer 0.4.0 and for Gemini batch
+context caching. The returned chats work with ellmer generics such as
 [`batch_chat()`](https://ellmer.tidyverse.org/reference/batch_chat.html),
 [`batch_chat_structured()`](https://ellmer.tidyverse.org/reference/batch_chat.html),
-[`parallel_chat()`](https://ellmer.tidyverse.org/reference/parallel_chat.html),
-etc. You will need a paid Groq developer account for Groq batch
-processing, a Gemini API key for Gemini batch processing, and an
-Anthropic API key for the Anthropic extended provider.
+and
+[`parallel_chat()`](https://ellmer.tidyverse.org/reference/parallel_chat.html).
 
 ## Installation
 
@@ -24,13 +27,14 @@ You can install the development version of `ellmer.extensions` from
 GitHub:
 
 ``` r
+
 # install.packages("devtools")
 devtools::install_github("xmarquez/ellmer.extensions")
 ```
 
 ## Setup
 
-Set one or both provider keys in `.Renviron` (edit with
+Set the provider keys you use in `.Renviron` (edit with
 `usethis::edit_r_environ()`):
 
 ``` R
@@ -46,15 +50,25 @@ ANTHROPIC_API_KEY=your-anthropic-key
 ### Basic Groq chat
 
 ``` r
+
 library(ellmer.extensions)
 
-chat_groq <- chat_groq_developer(model = "openai/gpt-oss-20b")
+chat_groq <- chat_groq_developer(
+  model = "openai/gpt-oss-20b",
+  params = ellmer::params(reasoning_effort = "low")
+)
 chat_groq$chat("What is the capital of France?")
 ```
+
+`reasoning_effort` is included in both synchronous and batch request
+bodies. Groq’s GPT-OSS models otherwise use the provider default
+(currently `"medium"`). Arguments supplied through `api_args` are also
+retained for compatibility and take precedence over values in `params`.
 
 ### Basic Gemini chat
 
 ``` r
+
 library(ellmer.extensions)
 
 chat_gemini <- chat_gemini_extended(model = "gemini-2.5-flash")
@@ -64,6 +78,7 @@ chat_gemini$chat("Reply with exactly one word: hello")
 ### Structured output (Groq)
 
 ``` r
+
 type_person <- ellmer::type_object(
   name = ellmer::type_string(),
   age = ellmer::type_integer(),
@@ -80,12 +95,10 @@ str(result)
 
 ### Batch chat (Groq)
 
-Process multiple requests with cost savings using Groq’s batch API. The
-Groq batch API is typically blazingly fast; though completion is not
-guaranteed for at least 24 hours, most requests with up to 500 prompts
-finish in seconds.
+Process multiple requests asynchronously using Groq’s batch API:
 
 ``` r
+
 prompts <- list(
   "What is 2 + 2? Reply with only the number.",
   "What is the capital of New Zealand? Reply with only the city."
@@ -106,6 +119,7 @@ chats
 ### Batch structured output (Groq)
 
 ``` r
+
 type_answer <- ellmer::type_object(
   question = ellmer::type_string(),
   answer = ellmer::type_string()
@@ -132,6 +146,7 @@ pricing, with a target 24-hour turnaround (many jobs complete faster).
 Maximum input file size is 2 GB.
 
 ``` r
+
 prompts <- list(
   "Reply with exactly: ok",
   "Reply with exactly: done"
@@ -163,6 +178,7 @@ chats <- batch_chat(
 Process multiple prompts concurrently (synchronous):
 
 ``` r
+
 parallel_chat(
   chat_groq,
   prompts = list(
@@ -180,116 +196,37 @@ parallel_chat(
 - Gemini models:
   [`ellmer::models_google_gemini()`](https://ellmer.tidyverse.org/reference/chat_google_gemini.html)
 
-## Groq supported models
+## Groq support
 
-### Structured outputs
-
-For strict structured outputs, Groq supports [the following
-models](https://console.groq.com/docs/structured-outputs#supported-models):
-
-The following models support `strict: true`, which uses constrained
-decoding to guarantee schema-compliant output:
-
-| Model ID            | Model                                                                   |
-|---------------------|-------------------------------------------------------------------------|
-| openai/gpt-oss-20b  | [GPT-OSS 20B](https://console.groq.com/docs/model/openai/gpt-oss-20b)   |
-| openai/gpt-oss-120b | [GPT-OSS 120B](https://console.groq.com/docs/model/openai/gpt-oss-120b) |
-
-The following models support Structured Outputs with `strict: false`
-(default), which attempts schema compliance but may occasionally error:
-
-| Model ID                                      | Model                                                                                                 |
-|-----------------------------------------------|-------------------------------------------------------------------------------------------------------|
-| openai/gpt-oss-20b                            | [GPT-OSS 20B](https://console.groq.com/docs/model/openai/gpt-oss-20b)                                 |
-| openai/gpt-oss-120b                           | [GPT-OSS 120B](https://console.groq.com/docs/model/openai/gpt-oss-120b)                               |
-| openai/gpt-oss-safeguard-20b                  | [Safety GPT OSS 20B](https://console.groq.com/docs/model/openai/gpt-oss-safeguard-20b)                |
-| moonshotai/kimi-k2-instruct-0905              | [Kimi K2 Instruct](https://console.groq.com/docs/model/moonshotai/kimi-k2-instruct-0905)              |
-| meta-llama/llama-4-maverick-17b-128e-instruct | [Llama 4 Maverick](https://console.groq.com/docs/model/meta-llama/llama-4-maverick-17b-128e-instruct) |
-| meta-llama/llama-4-scout-17b-16e-instruct     | [Llama 4 Scout](https://console.groq.com/docs/model/meta-llama/llama-4-scout-17b-16e-instruct)        |
-
-Streaming and tool use are not currently supported with Structured
-Outputs on Groq.
-
-### Groq batch processing
-
-For batch processing, [Groq supports the following
-models](https://console.groq.com/docs/batch#model-availability-and-pricing):
-
-| Model ID                                      | Model                                                                                                 |
-|-----------------------------------------------|-------------------------------------------------------------------------------------------------------|
-| openai/gpt-oss-20b                            | [GPT-OSS 20B](https://console.groq.com/docs/model/openai/gpt-oss-20b)                                 |
-| openai/gpt-oss-120b                           | [GPT-OSS 120B](https://console.groq.com/docs/model/openai/gpt-oss-120b)                               |
-| meta-llama/llama-4-maverick-17b-128e-instruct | [Llama 4 Maverick](https://console.groq.com/docs/model/meta-llama/llama-4-maverick-17b-128e-instruct) |
-| meta-llama/llama-4-scout-17b-16e-instruct     | [Llama 4 Scout](https://console.groq.com/docs/model/meta-llama/llama-4-scout-17b-16e-instruct)        |
-| llama-3.3-70b-versatile                       | [Llama 3.3 70B](https://console.groq.com/docs/model/llama-3.3-70b-versatile)                          |
-| llama-3.1-8b-instant                          | [Llama 3.1 8B Instant](https://console.groq.com/docs/model/llama-3.1-8b-instant)                      |
-| meta-llama/llama-guard-4-12b                  | [Llama Guard 4 12B](https://console.groq.com/docs/model/meta-llama/llama-guard-4-12b)                 |
-
-Pricing is at a 50% cost discount compared to [synchronous API
-pricing](https://groq.com/pricing). The batch discount does not stack
-with [prompt caching](https://console.groq.com/docs/prompt-caching)
-discounts; all batch tokens are billed at the 50% batch rate regardless
-of cache status.
+Provider model lists and capabilities change frequently. Use
+[`models_groq()`](https://xmarquez.github.io/ellmer.extensions/reference/models_groq.md)
+for the models available to your account and consult Groq’s current
+documentation for [structured
+outputs](https://console.groq.com/docs/structured-outputs),
+[reasoning](https://console.groq.com/docs/reasoning), and [batch
+processing](https://console.groq.com/docs/batch).
 
 ## Gemini batch processing
 
-Gemini batch processing uses the [file-based Batch
-API](https://ai.google.dev/gemini-api/docs/batch-api):
-
-- Requests are uploaded as a JSONL input file, then submitted via
-  `batchGenerateContent`.
-- Processing is asynchronous at **50% of standard pricing** with a
-  target 24-hour turnaround.
-- Maximum input file size: **2 GB**.
-- Batch jobs expire after **48 hours** if not completed.
-- Context caching is supported for batch requests (cache hits are billed
-  at standard cache pricing).
-
-Use
-[`chat_gemini_extended()`](https://xmarquez.github.io/ellmer.extensions/reference/chat_gemini_extended.md)
-to create a Gemini chat object with batch support, then pass it to
-[`batch_chat()`](https://ellmer.tidyverse.org/reference/batch_chat.html)
-or
-[`batch_chat_structured()`](https://ellmer.tidyverse.org/reference/batch_chat.html).
-Use
+Gemini processing uses the [file-based Batch
+API](https://ai.google.dev/gemini-api/docs/batch-api). On current ellmer
+versions, ordinary batch submission and result parsing are delegated
+upstream. `chat_gemini_extended(cache_ttl = 86400)` retains this
+package’s opt-in context cache lifecycle for batch system prompts. Use
 [`batch_chat_completed()`](https://ellmer.tidyverse.org/reference/batch_chat.html)
-to check whether a previously submitted batch has finished.
-
-The following [Gemini
-models](https://ai.google.dev/gemini-api/docs/models) support the Batch
-API:
-
-| Model ID                              |
-|---------------------------------------|
-| gemini-3-pro-preview                  |
-| gemini-3-pro-image-preview            |
-| gemini-3-flash-preview                |
-| gemini-2.5-flash                      |
-| gemini-2.5-flash-preview-09-2025      |
-| gemini-2.5-flash-image                |
-| gemini-2.5-flash-lite                 |
-| gemini-2.5-flash-lite-preview-09-2025 |
-| gemini-2.5-pro                        |
-| gemini-2.5-pro-preview-tts            |
-| gemini-2.0-flash                      |
-| gemini-2.0-flash-lite                 |
-
-Use
+to check a previously submitted job, and
 [`ellmer::models_google_gemini()`](https://ellmer.tidyverse.org/reference/chat_google_gemini.html)
-for a full model listing.
+for model discovery.
 
 ## Anthropic extended thinking with structured output
 
-Standard
-[`ellmer::chat_anthropic()`](https://ellmer.tidyverse.org/reference/chat_anthropic.html)
-cannot combine extended thinking (`reasoning_tokens`) with structured
-output because Anthropic’s API forbids `tool_choice` with thinking
-enabled.
 [`chat_anthropic_extended()`](https://xmarquez.github.io/ellmer.extensions/reference/chat_anthropic_extended.md)
-solves this by using Anthropic’s `output_config.format` (JSON schema)
-instead of `tool_choice` when thinking is active.
+preserves the older package interface for combining thinking with
+structured output. Current ellmer versions handle this natively; older
+versions use this package’s `output_config.format` compatibility path.
 
 ``` r
+
 library(ellmer.extensions)
 
 chat <- chat_anthropic_extended(

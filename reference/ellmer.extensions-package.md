@@ -1,9 +1,9 @@
-# ellmer.extensions: Groq and Gemini Provider Extensions for ellmer
+# ellmer.extensions: Groq, Gemini, and Anthropic Provider Extensions for Ellmer
 
-Provides ellmer provider extensions with full support for Groq
-structured outputs, batch processing, and parallel execution, plus
-Gemini file-based batch chat support. Extends ellmer provider classes to
-add provider-specific batch semantics and compatibility behaviors.
+Provides backward-compatible ellmer provider wrappers for Groq, Gemini,
+and Anthropic. Uses native ellmer provider functionality when it is
+available, retains legacy batch compatibility for older ellmer releases,
+and adds opt-in Gemini batch context caching.
 
 ## See also
 
