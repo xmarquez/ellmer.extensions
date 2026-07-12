@@ -265,7 +265,7 @@ reviewed by Xavier Marquez, including all live tests.
 
 ## All functions
 
-- [`ProviderGroqDeveloper()`](https://xmarquez.github.io/ellmer.extensions/reference/ProviderGroqDeveloper.md)
+- [`ProviderGroqDeveloper`](https://xmarquez.github.io/ellmer.extensions/reference/ProviderGroqDeveloper.md)
   : Groq Developer Provider Class
 - [`chat_anthropic_extended()`](https://xmarquez.github.io/ellmer.extensions/reference/chat_anthropic_extended.md)
   : Chat with Anthropic Models (Extended Thinking + Structured Output)

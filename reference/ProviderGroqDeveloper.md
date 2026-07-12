@@ -3,20 +3,6 @@
 S7 compatibility class that extends ellmer's native Groq provider when
 available and otherwise extends ProviderOpenAICompatible.
 
-## Usage
-
-``` r
-ProviderGroqDeveloper(
-  name = stop("Required"),
-  model = stop("Required"),
-  base_url = stop("Required"),
-  params = list(),
-  extra_args = list(),
-  extra_headers = character(0),
-  credentials = function() NULL
-)
-```
-
 ## Arguments
 
 - name:
