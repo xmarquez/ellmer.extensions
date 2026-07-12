@@ -24,7 +24,7 @@ anthropic_thinking_mode <- function(provider) {
 
 #' Register S7 methods for ProviderAnthropicExtended
 #'
-#' Called from `.onLoad()` and defensively from `chat_anthropic_extended()`.
+#' Called from `.onLoad()`.
 #' @noRd
 register_anthropic_methods <- function() {
   ellmer_ns <- asNamespace("ellmer")
@@ -52,6 +52,8 @@ register_anthropic_methods <- function() {
   ContentToolResponseFetch <- ellmer_ns$ContentToolResponseFetch
   AssistantTurn <- ellmer_ns$AssistantTurn
   map_chr <- ellmer_ns$map_chr
+  parent_chat_body <- S7::method(chat_body, ellmer_ns$ProviderAnthropic)
+  parent_value_turn <- S7::method(value_turn, ellmer_ns$ProviderAnthropic)
 
   # chat_body: route to parent or extended depending on thinking mode --------
   S7::method(chat_body, ProviderAnthropicExtended) <- function(
@@ -59,6 +61,19 @@ register_anthropic_methods <- function() {
   ) {
     thinking_mode <- anthropic_thinking_mode(provider)
     has_thinking <- !is.null(thinking_mode)
+
+    if (
+      anthropic_has_native_structured_output() &&
+        (!identical(thinking_mode, "adaptive") || anthropic_has_native_adaptive())
+    ) {
+      return(parent_chat_body(
+        provider,
+        stream = stream,
+        turns = turns,
+        tools = tools,
+        type = type
+      ))
+    }
 
     # --- System prompt (shared by both paths) ---
     if (length(turns) >= 1 && is_system_turn(turns[[1]])) {
@@ -75,7 +90,10 @@ register_anthropic_methods <- function() {
     }))
 
     # --- Params (shared) ---
-    params <- chat_params(provider, provider@params)
+    provider_params <- provider@params
+    reasoning_effort <- provider_params$reasoning_effort %||% "high"
+    provider_params$reasoning_effort <- NULL
+    params <- chat_params(provider, provider_params)
 
     # Ensure max_tokens is large enough when thinking is enabled.
     # ellmer defaults max_tokens to 4096, which is insufficient for thinking.
@@ -104,6 +122,7 @@ register_anthropic_methods <- function() {
       # Build thinking block
       if (identical(thinking_mode, "adaptive")) {
         thinking <- list(type = "adaptive")
+        output_config$effort <- reasoning_effort
         params$budget_tokens <- NULL  # strip if present; adaptive doesn't use budget
       } else if (rlang::has_name(params, "budget_tokens")) {
         thinking <- list(type = "enabled", budget_tokens = params$budget_tokens)
@@ -174,6 +193,9 @@ register_anthropic_methods <- function() {
         tools = tools,
         tool_choice = tool_choice,
         thinking = thinking,
+        output_config = if (identical(thinking_mode, "adaptive")) {
+          list(effort = reasoning_effort)
+        },
         !!!params
       ))
     }
@@ -183,6 +205,10 @@ register_anthropic_methods <- function() {
   S7::method(value_turn, ProviderAnthropicExtended) <- function(
     provider, result, has_type = FALSE
   ) {
+    if (anthropic_has_native_structured_output()) {
+      return(parent_value_turn(provider, result, has_type = has_type))
+    }
+
     thinking_mode <- anthropic_thinking_mode(provider)
     has_thinking <- !is.null(thinking_mode)
 
@@ -272,7 +298,13 @@ register_anthropic_methods <- function() {
             "Anthropic response truncated ({.val max_tokens}).",
             "i" = "{length(text_parts)} text block{?s} found; last block is incomplete.",
             "i" = "Model {result$model %||% 'unknown'} used {result$usage$output_tokens %||% '?'} output tokens.",
-            if (!is.null(parsed)) "i" = "Recovered JSON from an earlier complete text block, but the result may reflect a self-correction loop rather than the model's final answer."
+            if (!is.null(parsed)) {
+              c("i" = paste0(
+                "Recovered JSON from an earlier complete text block, but the ",
+                "result may reflect a self-correction loop rather than the ",
+                "model's final answer."
+              ))
+            }
           ))
         }
 

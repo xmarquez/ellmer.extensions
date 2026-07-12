@@ -1,13 +1,12 @@
 Package: ellmer.extensions
-Title: Groq, Gemini, and Anthropic Provider Extensions for ellmer
-Version: 0.2.0
+Title: Groq, Gemini, and Anthropic Provider Extensions for Ellmer
+Version: 0.3.0
 Authors@R:
     person("Xavier", "Marquez", , "marquez.x@gmail.com", role = c("aut", "cre"))
-Description: Provides ellmer provider extensions with full support for Groq
-    structured outputs, batch processing, and parallel execution, Gemini
-    file-based batch chat support, and Anthropic extended thinking with
-    structured output. Extends ellmer provider classes to add
-    provider-specific batch semantics and compatibility behaviors.
+Description: Provides backward-compatible ellmer provider wrappers for Groq,
+    Gemini, and Anthropic. Uses native ellmer provider functionality when it is
+    available, retains legacy batch compatibility for older ellmer releases,
+    and adds opt-in Gemini batch context caching.
 License: MIT + file LICENSE
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
@@ -15,12 +14,11 @@ RoxygenNote: 7.3.3
 Depends:
     R (>= 4.1.0)
 Imports:
-    S7 (>= 0.1.0),
-    ellmer (>= 0.0.1),
+    S7 (>= 0.2.0),
+    ellmer (>= 0.4.0),
     purrr,
     cli,
     httr2,
-    curl,
     withr,
     jsonlite,
     rlang

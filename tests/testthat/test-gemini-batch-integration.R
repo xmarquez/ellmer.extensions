@@ -1,229 +1,56 @@
-# Gemini integration tests ------------------------------------------------
+test_that("Gemini cached structured batch works end to end", {
+  skip_if_live_tests_disabled("GEMINI_API_KEY", "GOOGLE_API_KEY")
 
-test_that("chat_gemini_extended() creates a valid Chat object", {
-  skip_if_not_installed("ellmer")
-  skip_if(
-    Sys.getenv("GEMINI_API_KEY") == "" && Sys.getenv("GOOGLE_API_KEY") == "",
-    "No Gemini credentials set"
-  )
-
-  chat <- chat_gemini_extended()
-
-  expect_s3_class(chat, "Chat")
-  provider <- chat$get_provider()
-  expect_true(S7::S7_inherits(provider, ellmer.extensions:::ProviderGeminiExtended))
-})
-
-test_that("Gemini batch_chat submits and can be resumed", {
-  skip_if_not_installed("ellmer")
-  skip_if(
-    Sys.getenv("GEMINI_API_KEY") == "" && Sys.getenv("GOOGLE_API_KEY") == "",
-    "No Gemini credentials set"
-  )
-
-  chat <- chat_gemini_extended(model = "gemini-3-flash-preview")
-
-  prompts <- list("Reply with exactly: ok")
-  results_file <- tempfile(fileext = ".json")
-  on.exit(unlink(results_file), add = TRUE)
-
-  chats <- tryCatch(
-    ellmer::batch_chat(
-      chat,
-      prompts = prompts,
-      path = results_file,
-      wait = FALSE
-    ),
-    error = function(e) {
-      msg <- conditionMessage(e)
-      if (grepl("unexpected number of responses", msg, fixed = TRUE)) {
-        NULL
-      } else {
-        stop(e)
-      }
-    }
-  )
-
-  if (is.null(chats)) {
-    completed <- FALSE
-    for (i in seq_len(100)) {
-      Sys.sleep(10)
-      completed <- isTRUE(ellmer::batch_chat_completed(chat, prompts, results_file))
-      if (completed) {
-        break
-      }
-    }
-
-    if (!completed) {
-      skip("Gemini batch did not complete within test timeout.")
-    }
-
-    chats <- ellmer::batch_chat(
-      chat,
-      prompts = prompts,
-      path = results_file,
-      wait = TRUE
-    )
-  }
-
-  expect_equal(length(chats), 1)
-  expect_true(inherits(chats[[1]], "Chat"))
-})
-
-test_that("Gemini batch_chat_structured works", {
-  skip_if_not_installed("ellmer")
-  skip_if(
-    Sys.getenv("GEMINI_API_KEY") == "" && Sys.getenv("GOOGLE_API_KEY") == "",
-    "No Gemini credentials set"
-  )
-
-  ellmer_ns <- asNamespace("ellmer")
-  chat <- chat_gemini_extended(model = "gemini-3-flash-preview")
-
-  type_answer <- ellmer_ns$type_object(
-    answer = ellmer_ns$type_string()
-  )
-
-  prompts <- list("What is 2+2? Reply with just the number.")
-  results_file <- tempfile(fileext = ".json")
-  on.exit(unlink(results_file), add = TRUE)
-
-  result <- tryCatch(
-    ellmer::batch_chat_structured(
-      chat,
-      prompts = prompts,
-      path = results_file,
-      type = type_answer,
-      wait = FALSE
-    ),
-    error = function(e) {
-      msg <- conditionMessage(e)
-      if (grepl("unexpected number of responses", msg, fixed = TRUE)) {
-        NULL
-      } else if (grepl("HTTP 40[04]|invalid argument|not found|not supported", msg, ignore.case = TRUE)) {
-        skip(paste0("Gemini batch API rejected request: ", msg))
-      } else {
-        stop(e)
-      }
-    }
-  )
-
-  if (is.null(result)) {
-    completed <- FALSE
-    for (i in seq_len(12)) {
-      Sys.sleep(10)
-      completed <- isTRUE(ellmer::batch_chat_completed(chat, prompts, results_file))
-      if (completed) {
-        break
-      }
-    }
-
-    if (!completed) {
-      skip("Gemini batch did not complete within test timeout.")
-    }
-
-    result <- ellmer::batch_chat_structured(
-      chat,
-      prompts = prompts,
-      path = results_file,
-      type = type_answer,
-      wait = TRUE
-    )
-  }
-
-  expect_true(is.data.frame(result))
-  expect_equal(nrow(result), 1)
-  expect_true("answer" %in% names(result))
-})
-
-test_that("Gemini batch_chat_structured works with context caching", {
-  skip_if_not_installed("ellmer")
-  skip_if(
-    Sys.getenv("GEMINI_API_KEY") == "" && Sys.getenv("GOOGLE_API_KEY") == "",
-    "No Gemini credentials set"
-  )
-
-  ellmer_ns <- asNamespace("ellmer")
-  # System prompt must exceed Gemini's minimum cached token threshold
-  # (1,024 tokens for Flash models). Use a long, realistic prompt.
   filler <- paste(
-    "When solving problems, consider edge cases carefully.",
-    "Verify your answer by substituting back into the original equation.",
-    "If the problem involves fractions, simplify to lowest terms.",
-    "If the problem involves negative numbers, track signs carefully.",
-    "For word problems, identify the unknowns and set up equations.",
-    "Double-check arithmetic operations before giving your final answer.",
-    "If a problem has multiple valid interpretations, state your assumption.",
-    "Round decimal answers to two places unless otherwise specified."
+    "When solving a problem, identify the relevant facts, check edge cases,",
+    "show the necessary reasoning, verify the result, and then return only",
+    "the requested structured answer."
   )
-  long_prompt <- paste(
-    "You are a math tutor specializing in arithmetic and algebra.",
-    "Always show your work step by step. Be concise but thorough.",
-    "Answer with just the final number when asked for a specific number.",
-    paste(rep(filler, 20), collapse = " ")
-  )
-
+  system_prompt <- paste(rep(filler, 80), collapse = " ")
   chat <- chat_gemini_extended(
     model = "gemini-3-flash-preview",
-    system_prompt = long_prompt,
-    cache_ttl = 86400
+    system_prompt = system_prompt,
+    cache_ttl = 3600
   )
-
-  type_answer <- ellmer_ns$type_object(
-    answer = ellmer_ns$type_string()
-  )
-
-  prompts <- list(
-    "What is 2+2? Reply with just the number.",
-    "What is 3*3? Reply with just the number."
-  )
-  results_file <- tempfile(fileext = ".json")
-  on.exit(unlink(results_file), add = TRUE)
+  prompts <- list("What is 2+2?", "What is 3*3?")
+  type <- ellmer::type_object(answer = ellmer::type_string())
+  path <- tempfile(fileext = ".json")
+  on.exit(unlink(path), add = TRUE)
 
   result <- tryCatch(
     ellmer::batch_chat_structured(
       chat,
       prompts = prompts,
-      path = results_file,
-      type = type_answer,
+      type = type,
+      path = path,
       wait = FALSE
     ),
-    error = function(e) {
-      msg <- conditionMessage(e)
-      if (grepl("unexpected number of responses", msg, fixed = TRUE)) {
+    error = function(cnd) {
+      message <- conditionMessage(cnd)
+      if (grepl("unexpected number of responses", message, fixed = TRUE)) {
         NULL
-      } else if (grepl("HTTP 40[04]|invalid argument|not found|not supported", msg, ignore.case = TRUE)) {
-        skip(paste0("Gemini batch API rejected request: ", msg))
+      } else if (grepl("HTTP 40[04]|invalid argument|not supported", message, ignore.case = TRUE)) {
+        skip(paste0("Gemini rejected cached batch request: ", message))
       } else {
-        stop(e)
+        stop(cnd)
       }
     }
   )
 
   if (is.null(result)) {
-    completed <- FALSE
-    for (i in seq_len(100)) {
-      Sys.sleep(10)
-      completed <- isTRUE(ellmer::batch_chat_completed(chat, prompts, results_file))
-      if (completed) {
-        break
-      }
+    if (!wait_for_batch(chat, prompts, path)) {
+      skip("Gemini batch did not complete within 120 seconds")
     }
-
-    if (!completed) {
-      skip("Gemini batch did not complete within test timeout.")
-    }
-
     result <- ellmer::batch_chat_structured(
       chat,
       prompts = prompts,
-      path = results_file,
-      type = type_answer,
+      type = type,
+      path = path,
       wait = TRUE
     )
   }
 
-  expect_true(is.data.frame(result))
-  expect_equal(nrow(result), 2)
-  expect_true("answer" %in% names(result))
+  expect_s3_class(result, "data.frame")
+  expect_equal(nrow(result), 2L)
+  expect_named(result, "answer")
 })

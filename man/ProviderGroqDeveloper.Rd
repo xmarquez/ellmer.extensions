@@ -30,13 +30,12 @@ ProviderGroqDeveloper(
 \item{credentials}{API credentials (function or string)}
 }
 \description{
-S7 class that extends ProviderOpenAICompatible to provide Groq-specific functionality.
-Inherits all capabilities from ProviderOpenAICompatible (which uses the Chat Completions
-API format) while ensuring proper schema formatting for Groq's strict JSON validation.
+S7 compatibility class that extends ellmer's native Groq provider when
+available and otherwise extends ProviderOpenAICompatible.
 }
 \details{
-This class also implements batch processing support via Groq's Batch API,
-which offers a 50\% cost discount compared to synchronous API calls.
+It forwards Groq reasoning-effort parameters and retains a legacy batch
+implementation for ellmer releases without native Groq batch support.
 
 Users should typically use \code{\link[=chat_groq_developer]{chat_groq_developer()}} instead of calling this
 constructor directly. This class is exported for advanced use cases.

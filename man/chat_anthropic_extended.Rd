@@ -54,8 +54,9 @@ need this argument; instead set \code{ANTHROPIC_API_KEY} in \code{.Renviron}.}
 (behaves like \code{\link[ellmer:chat_anthropic]{ellmer::chat_anthropic()}}).
 \item \code{"enabled"}: extended thinking with explicit budget. Requires
 \code{reasoning_tokens} in \code{params}.
-\item \code{"adaptive"}: adaptive thinking. Only available on Claude Opus 4.6 and
-Sonnet 4.6; errors for 4.5 model IDs.
+\item \code{"adaptive"}: adaptive thinking. If \code{reasoning_effort} is not supplied,
+it defaults to \code{"high"}. Model compatibility is determined by Anthropic,
+rather than by a hard-coded model allowlist.
 }}
 }
 \value{
@@ -63,12 +64,10 @@ A \link[ellmer:Chat]{ellmer::Chat} object.
 }
 \description{
 Creates a chat interface for Anthropic's Claude API with support for
-extended thinking combined with structured output. Standard
-\code{\link[ellmer:chat_anthropic]{ellmer::chat_anthropic()}} cannot combine thinking (\code{reasoning_tokens})
-with structured output because Anthropic's API forbids \code{tool_choice} with
-thinking enabled. This provider uses Anthropic's \code{output_config.format}
-(JSON schema) instead of \code{tool_choice} when thinking is active, avoiding
-the API conflict.
+extended and adaptive thinking combined with structured output. On recent
+versions of ellmer this is a backward-compatible wrapper around
+\code{\link[ellmer:chat_anthropic]{ellmer::chat_anthropic()}}. Older versions use the bundled compatibility
+provider when ellmer does not yet provide the requested feature.
 
 When \code{thinking} is \code{NULL} (the default), thinking is auto-detected from
 \code{params}: if \code{reasoning_tokens} is present, thinking is enabled
@@ -89,14 +88,6 @@ JSON that matches the requested schema. This avoids the API error:
 When thinking is not active (no \code{reasoning_tokens} in \code{params} and
 \code{thinking = NULL}), the provider falls back to standard
 \code{tool_choice}-based structured output (identical to \code{ellmer::chat_anthropic()}).
-}
-
-\subsection{Model compatibility}{
-\itemize{
-\item \code{thinking = "enabled"}: All Claude 4.5 models (Haiku, Sonnet, Opus) and
-later. Requires \code{reasoning_tokens} in \code{params} to set the thinking budget.
-\item \code{thinking = "adaptive"}: Claude Opus 4.6 and Sonnet 4.6 only.
-}
 }
 }
 \seealso{

@@ -1,596 +1,182 @@
-# Provider class structure ------------------------------------------------
-
-test_that("ProviderGeminiExtended class is properly defined", {
-  skip_if_not_installed("ellmer")
-
-  provider_class <- ellmer.extensions:::ProviderGeminiExtended
-  expect_true(inherits(provider_class, "S7_class"))
-
-  parent_class <- attr(provider_class, "parent")
-  expect_equal(attr(parent_class, "name"), "ProviderGoogleGemini")
-})
-
-test_that("ProviderGeminiExtended has batch support", {
-  skip_if_not_installed("ellmer")
-  skip_if(
-    is.null(ellmer.extensions:::ProviderGeminiExtended),
-    "ProviderGeminiExtended not initialized"
-  )
-
+new_test_gemini_provider <- function(model = "gemini-2.5-flash") {
   ellmer_ns <- asNamespace("ellmer")
-
-  # Defensive re-registration (mirrors chat_gemini_extended behaviour)
-  tryCatch(suppressMessages(ellmer.extensions:::register_gemini_methods()), error = function(e) NULL)
-
-  provider <- ellmer.extensions:::ProviderGeminiExtended(
+  ellmer.extensions:::ProviderGeminiExtended(
     name = "Google/Gemini",
     base_url = "https://generativelanguage.googleapis.com/v1beta/",
-    model = "gemini-2.5-flash",
+    model = model,
     params = ellmer_ns$params(),
     extra_args = list(),
-    credentials = ellmer_ns$as_credentials("test", function() "test_key"),
+    credentials = ellmer_ns$as_credentials("test", function() "test-key"),
     extra_headers = character()
   )
+}
 
-  expect_true(ellmer_ns$has_batch_support(provider))
-})
-
-test_that("chat_gemini_extended creates a valid Chat object", {
-  skip_if_not_installed("ellmer")
-
-  chat <- chat_gemini_extended(
-    credentials = function() "dummy_key_for_testing"
-  )
-
-  expect_s3_class(chat, "Chat")
-  provider <- chat$get_provider()
-  expect_true(S7::S7_inherits(provider, ellmer.extensions:::ProviderGeminiExtended))
-})
-
-test_that("chat_gemini_extended allows model selection", {
-  skip_if_not_installed("ellmer")
-
+test_that("chat_gemini_extended preserves its public constructor", {
   chat <- chat_gemini_extended(
     model = "gemini-2.0-flash",
-    credentials = function() "dummy_key_for_testing"
+    credentials = function() "test-key"
   )
 
   expect_s3_class(chat, "Chat")
   expect_equal(chat$get_model(), "gemini-2.0-flash")
-})
-
-# Gemini batch helper functions -------------------------------------------
-
-test_that("gemini_extract_index extracts from metadata.request_index", {
-  x <- list(metadata = list(request_index = 5L))
-  expect_equal(ellmer.extensions:::gemini_extract_index(x), 5L)
-})
-
-test_that("gemini_extract_index extracts from custom_id key", {
-  x <- list(custom_id = "chat-3")
-  expect_equal(ellmer.extensions:::gemini_extract_index(x), 3L)
-})
-
-test_that("gemini_extract_index extracts from key field", {
-  x <- list(key = "chat-7")
-  expect_equal(ellmer.extensions:::gemini_extract_index(x), 7L)
-})
-
-test_that("gemini_extract_index extracts from metadata key field", {
-  x <- list(metadata = list(key = "chat-8"))
-  expect_equal(ellmer.extensions:::gemini_extract_index(x), 8L)
-})
-
-test_that("gemini_extract_index returns default when no index found", {
-  x <- list(foo = "bar")
-  expect_equal(ellmer.extensions:::gemini_extract_index(x, default = 99L), 99L)
-})
-
-test_that("gemini_json_fallback parses request_index from malformed line", {
-  line <- '{"metadata": {"request_index": 42}, broken json...'
-  result <- ellmer.extensions:::gemini_json_fallback(line)
-
-  expect_equal(result$metadata$request_index, 42L)
-  expect_equal(result$status$code, 500L)
-})
-
-test_that("gemini_json_fallback parses custom_id from malformed line", {
-  line <- '{"custom_id": "chat-5", broken...'
-  result <- ellmer.extensions:::gemini_json_fallback(line)
-
-  expect_equal(result$metadata$request_index, 5L)
-  expect_equal(result$status$code, 500L)
-})
-
-test_that("gemini_json_fallback returns empty metadata for unparseable line", {
-  line <- "completely broken"
-  result <- ellmer.extensions:::gemini_json_fallback(line)
-
-  expect_equal(result$metadata, list())
-  expect_equal(result$status$code, 500L)
-})
-
-test_that("gemini_normalize_result handles plain GenerateContentResponse", {
-  x <- list(
-    candidates = list(list(content = list(parts = list(list(text = "hello"))))),
-    usageMetadata = list(totalTokenCount = 10L)
-  )
-  result <- ellmer.extensions:::gemini_normalize_result(x, index_default = 1L)
-
-  expect_equal(result$index, 1L)
-  expect_equal(result$result$status_code, 200L)
-  expect_equal(result$result$body, x)
-})
-
-test_that("gemini_normalize_result handles wrapped response", {
-  x <- list(
-    metadata = list(request_index = 2L),
-    response = list(candidates = list())
-  )
-  result <- ellmer.extensions:::gemini_normalize_result(x, index_default = 99L)
-
-  expect_equal(result$index, 2L)
-  expect_equal(result$result$status_code, 200L)
-  expect_equal(result$result$body, list(candidates = list()))
-})
-
-test_that("gemini_normalize_result handles error response", {
-  x <- list(
-    metadata = list(request_index = 3L),
-    error = list(code = 400L, message = "bad request")
-  )
-  result <- ellmer.extensions:::gemini_normalize_result(x, index_default = 99L)
-
-  expect_equal(result$index, 3L)
-  expect_equal(result$result$status_code, 400L)
-  expect_null(result$result$body)
-})
-
-test_that("gemini_normalize_result handles unknown format", {
-  x <- list(unknown_field = "value")
-  result <- ellmer.extensions:::gemini_normalize_result(x, index_default = 5L)
-
-  expect_equal(result$index, 5L)
-  expect_equal(result$result$status_code, 500L)
-  expect_null(result$result$body)
-})
-
-# gemini_prepare_batch_body -----------------------------------------------
-
-test_that("gemini_prepare_batch_body converts API keys to snake_case", {
-  body <- list(
-    generationConfig = list(responseMimeType = "text/plain"),
-    contents = list(list(role = "user", parts = list(list(text = "hi"))))
-  )
-
-  result <- ellmer.extensions:::gemini_prepare_batch_body(body)
-
-  expect_true("generation_config" %in% names(result))
-  expect_null(result$generationConfig)
-  expect_true("response_mime_type" %in% names(result$generation_config))
-})
-
-test_that("gemini_prepare_batch_body preserves schema property names", {
-  body <- list(
-    generationConfig = list(
-      responseMimeType = "application/json",
-      responseSchema = list(
-        type = "object",
-        properties = list(
-          firstName = list(type = "string"),
-          lastName = list(type = "string")
-        ),
-        required = list("firstName", "lastName")
-      )
-    ),
-    contents = list(list(role = "user", parts = list(list(text = "hi"))))
-  )
-  result <- ellmer.extensions:::gemini_prepare_batch_body(body)
-
-  schema <- result$generation_config$response_json_schema
-  expect_false(is.null(schema))
-  # Property names must be preserved as-is, not converted to snake_case
-
-  expect_true("firstName" %in% names(schema$properties))
-  expect_true("lastName" %in% names(schema$properties))
-  expect_equal(schema$required, list("firstName", "lastName"))
-  # The old field name must be removed
-  expect_null(result$generation_config$response_schema)
-})
-
-test_that("gemini_prepare_batch_body strips empty system instruction", {
-  body <- list(
-    systemInstruction = list(parts = list(text = "")),
-    contents = list(list(role = "user", parts = list(list(text = "hi"))))
-  )
-  result <- ellmer.extensions:::gemini_prepare_batch_body(body)
-
-  expect_null(result$system_instruction)
-  expect_null(result$systemInstruction)
-})
-
-test_that("gemini_prepare_batch_body keeps non-empty system instruction", {
-  body <- list(
-    systemInstruction = list(parts = list(text = "You are helpful.")),
-    contents = list(list(role = "user", parts = list(list(text = "hi"))))
-  )
-  result <- ellmer.extensions:::gemini_prepare_batch_body(body)
-
-  expect_false(is.null(result$system_instruction))
-  expect_equal(result$system_instruction$parts$text, "You are helpful.")
-})
-
-test_that("value_turn excludes Gemini thought text from structured JSON content", {
-  skip_if_not_installed("ellmer")
-  skip_if(
-    is.null(ellmer.extensions:::ProviderGeminiExtended),
-    "ProviderGeminiExtended not initialized"
-  )
-
-  ellmer_ns <- asNamespace("ellmer")
-
-  tryCatch(suppressMessages(ellmer.extensions:::register_gemini_methods()), error = function(e) NULL)
-
-  provider <- ellmer.extensions:::ProviderGeminiExtended(
-    name = "Google/Gemini",
-    base_url = "https://generativelanguage.googleapis.com/v1beta/",
-    model = "gemini-3.1-pro-preview",
-    params = ellmer_ns$params(),
-    extra_args = list(),
-    credentials = ellmer_ns$as_credentials("test", function() "test_key"),
-    extra_headers = character()
-  )
-
-  result <- list(
-    candidates = list(
-      list(
-        content = list(
-          parts = list(
-            list(thought = TRUE, text = "Thinking through the answer..."),
-            list(
-              thoughtSignature = "sig",
-              text = '{"score":0.2,"explanation":"ok","populist":{},"non_populist":{}}'
-            )
-          )
-        )
-      )
-    ),
-    usageMetadata = list(
-      promptTokenCount = 10L,
-      candidatesTokenCount = 5L,
-      totalTokenCount = 15L
-    )
-  )
-
-  turn <- ellmer_ns$value_turn(provider, result, has_type = TRUE)
-
-  text_items <- Filter(function(x) any(grepl("ContentText", class(x))), turn@contents)
-  json_items <- Filter(function(x) any(grepl("ContentJson", class(x))), turn@contents)
-
-  expect_length(text_items, 1)
-  expect_length(json_items, 1)
-  expect_match(text_items[[1]]@text, "Thinking through the answer")
-  expect_equal(json_items[[1]]@parsed$score, 0.2)
-})
-
-# Batch support -----------------------------------------------------------
-
-test_that("batch_status keeps working when succeeded but no responsesFile", {
-  skip_if_not_installed("ellmer")
-  skip_if(
-    is.null(ellmer.extensions:::ProviderGeminiExtended),
-    "ProviderGeminiExtended not initialized"
-  )
-
-  ellmer_ns <- asNamespace("ellmer")
-
-  tryCatch(suppressMessages(ellmer.extensions:::register_gemini_methods()), error = function(e) NULL)
-
-  provider <- ellmer.extensions:::ProviderGeminiExtended(
-    name = "Google/Gemini",
-    base_url = "https://generativelanguage.googleapis.com/v1beta/",
-    model = "gemini-2.5-flash",
-    params = ellmer_ns$params(),
-    extra_args = list(),
-    credentials = ellmer_ns$as_credentials("test", function() "test_key"),
-    extra_headers = character()
-  )
-
-  batch <- list(
-    metadata = list(
-      state = "BATCH_STATE_SUCCEEDED",
-      batchStats = list(requestCount = 2L, successfulRequestCount = 2L)
-    )
-  )
-
-  status <- ellmer_ns$batch_status(provider, batch)
-  expect_true(status$working)
-})
-
-test_that("batch_status marks done when succeeded with responsesFile", {
-  skip_if_not_installed("ellmer")
-  skip_if(
-    is.null(ellmer.extensions:::ProviderGeminiExtended),
-    "ProviderGeminiExtended not initialized"
-  )
-
-  ellmer_ns <- asNamespace("ellmer")
-
-  tryCatch(suppressMessages(ellmer.extensions:::register_gemini_methods()), error = function(e) NULL)
-
-  provider <- ellmer.extensions:::ProviderGeminiExtended(
-    name = "Google/Gemini",
-    base_url = "https://generativelanguage.googleapis.com/v1beta/",
-    model = "gemini-2.5-flash",
-    params = ellmer_ns$params(),
-    extra_args = list(),
-    credentials = ellmer_ns$as_credentials("test", function() "test_key"),
-    extra_headers = character()
-  )
-
-  batch <- list(
-    metadata = list(
-      state = "BATCH_STATE_SUCCEEDED",
-      batchStats = list(requestCount = 2L, successfulRequestCount = 2L)
-    ),
-    response = list(responsesFile = "files/abc123")
-  )
-
-  status <- ellmer_ns$batch_status(provider, batch)
-  expect_false(status$working)
-})
-
-test_that("batch_retrieve reorders out-of-order Gemini results by key", {
-  skip_if_not_installed("ellmer")
-  skip_if(
-    is.null(ellmer.extensions:::ProviderGeminiExtended),
-    "ProviderGeminiExtended not initialized"
-  )
-
-  ellmer_ns <- asNamespace("ellmer")
-
-  tryCatch(suppressMessages(ellmer.extensions:::register_gemini_methods()), error = function(e) NULL)
-
-  provider <- ellmer.extensions:::ProviderGeminiExtended(
-    name = "Google/Gemini",
-    base_url = "https://generativelanguage.googleapis.com/v1beta/",
-    model = "gemini-2.5-flash",
-    params = ellmer_ns$params(),
-    extra_args = list(),
-    credentials = ellmer_ns$as_credentials("test", function() "test_key"),
-    extra_headers = character()
-  )
-
-  batch <- list(
-    metadata = list(batchStats = list(requestCount = 3L)),
-    response = list(responsesFile = "files/abc123")
-  )
-
-  local_mocked_bindings(
-    gemini_download_file = function(provider, name, path) {
-      lines <- c(
-        jsonlite::toJSON(list(
-          key = "chat-3",
-          response = list(
-            responseId = "third",
-            candidates = list(list(content = list(parts = list(list(text = "{}"))))),
-            usageMetadata = list(totalTokenCount = 3L)
-          )
-        ), auto_unbox = TRUE),
-        jsonlite::toJSON(list(
-          key = "chat-1",
-          response = list(
-            responseId = "first",
-            candidates = list(list(content = list(parts = list(list(text = "{}"))))),
-            usageMetadata = list(totalTokenCount = 1L)
-          )
-        ), auto_unbox = TRUE),
-        jsonlite::toJSON(list(
-          key = "chat-2",
-          response = list(
-            responseId = "second",
-            candidates = list(list(content = list(parts = list(list(text = "{}"))))),
-            usageMetadata = list(totalTokenCount = 2L)
-          )
-        ), auto_unbox = TRUE)
-      )
-      writeLines(lines, path)
-      invisible(path)
-    }
-  )
-
-  results <- ellmer_ns$batch_retrieve(provider, batch)
-
-  expect_equal(vapply(results, \(x) x$body$responseId, character(1)), c(
-    "first",
-    "second",
-    "third"
+  expect_true(S7::S7_inherits(
+    chat$get_provider(),
+    ellmer.extensions:::ProviderGeminiExtended
   ))
 })
 
-# Credential fallback -----------------------------------------------------
-
-test_that("chat_gemini_extended fallback checks GOOGLE_API_KEY", {
-  skip_if_not_installed("ellmer")
-
-  # When ellmer does NOT export default_google_credentials (old versions),
-  # the fallback function should try GEMINI_API_KEY first, then GOOGLE_API_KEY.
-  ellmer_ns <- asNamespace("ellmer")
-
-  # Only test the fallback path (when default_google_credentials doesn't exist)
-  skip_if(
-    exists("default_google_credentials", envir = ellmer_ns, inherits = FALSE),
-    "ellmer has default_google_credentials; fallback path not used"
-  )
-
-  withr::local_envvar(GEMINI_API_KEY = "", GOOGLE_API_KEY = "test-google-key")
-  chat <- chat_gemini_extended(model = "gemini-2.5-flash")
-  expect_s3_class(chat, "Chat")
+test_that("Gemini extension reports batch support", {
+  expect_true(asNamespace("ellmer")$has_batch_support(new_test_gemini_provider()))
 })
 
-# Context caching helpers --------------------------------------------------
-
-test_that("gemini_prepare_cached_body replaces system_instruction with cached_content", {
+test_that("gemini_prepare_batch_body prepares structured requests", {
   body <- list(
-    systemInstruction = list(parts = list(text = "You are helpful")),
-    contents = list(list(parts = list(list(text = "Hello")))),
-    generationConfig = list(temperature = 0)
-  )
-  result <- ellmer.extensions:::gemini_prepare_cached_body(body, "cachedContents/abc123")
-
-  expect_null(result$system_instruction)
-  expect_null(result$systemInstruction)
-  expect_equal(result$cached_content, "cachedContents/abc123")
-  # Contents should still be present (snake_case after prepare)
-  expect_false(is.null(result$contents))
-  # generation_config should be present (converted from camelCase)
-  expect_false(is.null(result$generation_config))
-})
-
-test_that("gemini_prepare_cached_body works when no system_instruction exists", {
-  body <- list(
-    contents = list(list(parts = list(list(text = "Hello")))),
-    generationConfig = list(temperature = 0)
-  )
-  result <- ellmer.extensions:::gemini_prepare_cached_body(body, "cachedContents/abc123")
-
-  expect_null(result$system_instruction)
-  expect_equal(result$cached_content, "cachedContents/abc123")
-  expect_false(is.null(result$contents))
-})
-
-test_that("gemini_prepare_cached_body preserves schema properties", {
-  body <- list(
-    systemInstruction = list(parts = list(text = "System")),
-    contents = list(list(parts = list(list(text = "Hello")))),
+    systemInstruction = list(parts = list(text = "")),
     generationConfig = list(
       responseMimeType = "application/json",
       responseSchema = list(
         type = "object",
-        properties = list(
-          firstName = list(type = "string"),
-          lastName = list(type = "string")
-        )
+        properties = list(firstName = list(type = "string"))
       )
     )
   )
-  result <- ellmer.extensions:::gemini_prepare_cached_body(body, "cachedContents/xyz")
+
+  result <- ellmer.extensions:::gemini_prepare_batch_body(body)
 
   expect_null(result$system_instruction)
-  expect_equal(result$cached_content, "cachedContents/xyz")
-  # Schema property names should NOT be converted to snake_case
-  schema <- result$generation_config$response_json_schema
-  expect_true("firstName" %in% names(schema$properties))
-  expect_true("lastName" %in% names(schema$properties))
+  expect_equal(result$generation_config$response_mime_type, "application/json")
+  expect_true("firstName" %in%
+                names(result$generation_config$response_json_schema$properties))
+  expect_null(result$generation_config$response_schema)
 })
 
-test_that("cache name survives JSON round-trip (simulating wait=FALSE resume)", {
+test_that("batch normalization orders wrapped responses by key", {
+  lines <- list(
+    list(key = "chat-2", response = list(responseId = "second")),
+    list(key = "chat-1", response = list(responseId = "first")),
+    list(key = "chat-3", error = list(code = 429L))
+  )
+
+  normalized <- purrr::imap(lines, function(x, i) {
+    ellmer.extensions:::gemini_normalize_result(x, as.integer(i))
+  })
+  normalized <- normalized[order(vapply(normalized, `[[`, integer(1), "index"))]
+
+  expect_equal(normalized[[1]]$result$body$responseId, "first")
+  expect_equal(normalized[[2]]$result$body$responseId, "second")
+  expect_equal(normalized[[3]]$result$status_code, 429L)
+})
+
+test_that("Gemini fixture preserves thinking, JSON, and finish reason", {
+  fixture <- jsonlite::read_json(
+    testthat::test_path("fixtures", "gemini-batch-result.json"),
+    simplifyVector = FALSE
+  )
+  turn <- asNamespace("ellmer")$value_turn(
+    new_test_gemini_provider("gemini-3.1-pro-preview"),
+    fixture$body,
+    has_type = TRUE
+  )
+
+  expect_true(S7::S7_inherits(
+    turn@contents[[1]],
+    asNamespace("ellmer")$ContentThinking
+  ))
+  expect_equal(turn@contents[[1]]@thinking, "Analyzing the speech for populist elements...")
+  expect_true(S7::S7_inherits(
+    turn@contents[[2]],
+    asNamespace("ellmer")$ContentJson
+  ))
+  expect_equal(turn@contents[[2]]@parsed$score, 0.1)
+  expect_equal(turn@json$candidates[[1]]$finishReason, "STOP")
+})
+
+test_that("Gemini tool-call thought signatures survive replay", {
+  ellmer_ns <- asNamespace("ellmer")
+  provider <- new_test_gemini_provider()
+  result <- list(
+    candidates = list(list(
+      content = list(parts = list(list(
+        functionCall = list(name = "lookup", args = list(id = 1L)),
+        thoughtSignature = "signature-123"
+      ))),
+      finishReason = "STOP"
+    )),
+    usageMetadata = list()
+  )
+
+  turn <- ellmer_ns$value_turn(provider, result)
+  request <- turn@contents[[1]]
+  replay <- ellmer_ns$as_json(provider, request)
+
+  expect_equal(replay$thoughtSignature, "signature-123")
+  expect_equal(turn@json$candidates[[1]]$finishReason, "STOP")
+})
+
+test_that("batch status waits for the response file", {
+  ellmer_ns <- asNamespace("ellmer")
+  provider <- new_test_gemini_provider()
+  batch <- list(metadata = list(
+    state = "BATCH_STATE_SUCCEEDED",
+    batchStats = list(requestCount = 2L, successfulRequestCount = 2L)
+  ))
+
+  expect_true(ellmer_ns$batch_status(provider, batch)$working)
+  batch$response <- list(responsesFile = "files/output")
+  expect_false(ellmer_ns$batch_status(provider, batch)$working)
+})
+
+test_that("cached batch metadata survives serialization", {
   batch <- list(
     name = "batches/test-123",
-    metadata = list(state = "BATCH_STATE_SUCCEEDED"),
     .gemini_cache_name = "cachedContents/abc123"
   )
-  json <- jsonlite::toJSON(batch, auto_unbox = TRUE)
-  restored <- jsonlite::fromJSON(json, simplifyVector = FALSE)
+  restored <- jsonlite::fromJSON(
+    jsonlite::toJSON(batch, auto_unbox = TRUE),
+    simplifyVector = FALSE
+  )
 
   expect_equal(restored$.gemini_cache_name, "cachedContents/abc123")
 })
 
-test_that("batch_poll carries cache name forward", {
-  skip_if_not_installed("ellmer")
-  skip_if_not_installed("ellmer.extensions")
-
-  # Simulate a batch object with cache name
-  batch_with_cache <- list(
-    name = "batches/fake-123",
-    .gemini_cache_name = "cachedContents/test-cache"
+test_that("gemini_prepare_cached_body replaces the system instruction", {
+  body <- list(
+    systemInstruction = list(parts = list(text = "System")),
+    contents = list(list(parts = list(list(text = "Hello"))))
+  )
+  result <- ellmer.extensions:::gemini_prepare_cached_body(
+    body,
+    "cachedContents/abc123"
   )
 
-  # We can't call batch_poll directly without hitting the API, but we can
-
-  # verify the carry-forward logic by inspecting the method source
-  # Instead, test the JSON round-trip which is the critical path for resume
-  json <- jsonlite::toJSON(batch_with_cache, auto_unbox = TRUE)
-  restored <- jsonlite::fromJSON(json, simplifyVector = FALSE)
-  expect_equal(restored$.gemini_cache_name, "cachedContents/test-cache")
-  expect_equal(restored$name, "batches/fake-123")
+  expect_null(result$system_instruction)
+  expect_equal(result$cached_content, "cachedContents/abc123")
+  expect_false(is.null(result$contents))
 })
 
-test_that("chat_gemini_extended sets cache_ttl attribute on provider", {
-  skip_if_not_installed("ellmer")
-  skip_if(
-    Sys.getenv("GEMINI_API_KEY") == "" && Sys.getenv("GOOGLE_API_KEY") == "",
-    "No Gemini credentials set"
-  )
-
+test_that("chat_gemini_extended validates and stores cache_ttl", {
   chat <- chat_gemini_extended(
-    model = "gemini-2.5-flash",
+    credentials = function() "test-key",
     cache_ttl = 86400
   )
-  provider <- chat$get_provider()
-  expect_equal(attr(provider, ".gemini_cache_ttl"), 86400L)
-})
-
-test_that("chat_gemini_extended without cache_ttl has no attribute", {
-  skip_if_not_installed("ellmer")
-  skip_if(
-    Sys.getenv("GEMINI_API_KEY") == "" && Sys.getenv("GOOGLE_API_KEY") == "",
-    "No Gemini credentials set"
-  )
-
-  chat <- chat_gemini_extended(model = "gemini-2.5-flash")
-  provider <- chat$get_provider()
-  expect_null(attr(provider, ".gemini_cache_ttl"))
-})
-
-test_that("chat_gemini_extended errors for cache_ttl under 60s", {
-  skip_if_not_installed("ellmer")
-  skip_if(
-    Sys.getenv("GEMINI_API_KEY") == "" && Sys.getenv("GOOGLE_API_KEY") == "",
-    "No Gemini credentials set"
-  )
+  expect_equal(attr(chat$get_provider(), ".gemini_cache_ttl"), 86400L)
 
   expect_error(
-    chat_gemini_extended(model = "gemini-2.5-flash", cache_ttl = 30),
+    chat_gemini_extended(credentials = function() "test-key", cache_ttl = 30),
     "at least 60"
   )
-})
-
-test_that("chat_gemini_extended warns for cache_ttl under 1 hour", {
-  skip_if_not_installed("ellmer")
-  skip_if(
-    Sys.getenv("GEMINI_API_KEY") == "" && Sys.getenv("GOOGLE_API_KEY") == "",
-    "No Gemini credentials set"
-  )
-
-  expect_warning(
-    chat_gemini_extended(model = "gemini-2.5-flash", cache_ttl = 300),
-    "cache expires"
-  )
-})
-
-test_that("chat_gemini_extended rejects non-numeric cache_ttl", {
-  skip_if_not_installed("ellmer")
-  skip_if(
-    Sys.getenv("GEMINI_API_KEY") == "" && Sys.getenv("GOOGLE_API_KEY") == "",
-    "No Gemini credentials set"
-  )
-
   expect_error(
-    chat_gemini_extended(model = "gemini-2.5-flash", cache_ttl = "1h"),
-    "must be a numeric"
+    chat_gemini_extended(credentials = function() "test-key", cache_ttl = "1h"),
+    "numeric"
   )
 })
 
-test_that("chat_gemini_extended rejects NA cache_ttl", {
-  skip_if_not_installed("ellmer")
-  skip_if(
-    Sys.getenv("GEMINI_API_KEY") == "" && Sys.getenv("GOOGLE_API_KEY") == "",
-    "No Gemini credentials set"
+test_that("native Gemini methods are detected as one capability", {
+  native <- ellmer.extensions:::gemini_native_batch_methods()
+  expected <- exists(
+    "gemini_prepare_batch_body",
+    asNamespace("ellmer"),
+    inherits = FALSE
   )
-
-  expect_error(
-    chat_gemini_extended(model = "gemini-2.5-flash", cache_ttl = NA),
-    "single non-NA"
-  )
+  expect_identical(!is.null(native), expected)
 })

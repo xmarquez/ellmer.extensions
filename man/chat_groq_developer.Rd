@@ -62,13 +62,13 @@ A \link[ellmer:Chat]{ellmer::Chat} object with methods for:
 }
 \description{
 Creates a chat interface for Groq's API with support for structured outputs,
-batch processing, and parallel execution. This developer version extends
-ellmer's ProviderOpenAICompatible to inherit full batch support while adding
-Groq-specific schema formatting (additionalProperties: false).
+batch processing, and parallel execution. This compatibility entry point uses
+ellmer's native Groq provider when available and retains batch support for
+older ellmer releases.
 
 Sign up at \url{https://groq.com}.
 
-Built on top of ellmer's ProviderOpenAICompatible class.
+Built on top of ellmer's Groq or OpenAI-compatible provider class.
 }
 \section{Structured Outputs}{
 

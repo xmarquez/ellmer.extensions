@@ -167,43 +167,35 @@ gemini_prepare_cached_body <- function(body, cache_name) {
   body
 }
 
-# Batch metadata helpers ---------------------------------------------------
+# Batch compatibility helpers --------------------------------------------
 
-#' Extract request index from known batch metadata fields
+#' Find native Gemini batch methods, if this version of ellmer has them
 #' @noRd
-gemini_extract_index <- function(x, default = NA_integer_) {
-  metadata <- x$metadata %||% list()
-  idx <- metadata$request_index %||% metadata$index
-
-  if (!is.null(idx) && !is.na(idx)) {
-    return(as.integer(idx))
+gemini_native_batch_methods <- function(ellmer_ns = asNamespace("ellmer")) {
+  get_method <- function(generic) {
+    tryCatch(
+      S7::method(generic, ellmer_ns$ProviderGoogleGemini),
+      error = function(e) NULL
+    )
   }
 
-  key <- x$key %||% x$custom_id %||% metadata$key %||% metadata$custom_id %||% ""
+  methods <- list(
+    submit = get_method(ellmer_ns$batch_submit),
+    poll = get_method(ellmer_ns$batch_poll),
+    retrieve = get_method(ellmer_ns$batch_retrieve)
+  )
+
+  if (any(vapply(methods, is.null, logical(1)))) NULL else methods
+}
+
+#' Extract the request index assigned by Gemini batch submission
+#' @noRd
+gemini_extract_index <- function(x, default = NA_integer_) {
+  key <- x$key %||% ""
   if (grepl("^chat-[0-9]+$", key)) {
     return(as.integer(sub("^chat-([0-9]+)$", "\\1", key)))
   }
-
   as.integer(default)
-}
-
-#' Parse malformed Gemini JSONL lines into a recoverable error object
-#' @noRd
-gemini_json_fallback <- function(line) {
-  index <- suppressWarnings(as.integer(sub('.*"request_index"\\s*:\\s*([0-9]+).*', "\\1", line, perl = TRUE)))
-
-  if (length(index) == 0L || is.na(index)) {
-    custom_id <- tryCatch({
-      m <- regmatches(line, regexpr('"custom_id"\\s*:\\s*"chat-[0-9]+"', line, perl = TRUE))
-      if (length(m) == 0L) NA_character_ else sub('.*"chat-([0-9]+)".*', "\\1", m)
-    }, error = function(e) NA_character_)
-    index <- suppressWarnings(as.integer(custom_id))
-  }
-
-  list(
-    metadata = if (length(index) == 0L || is.na(index)) list() else list(request_index = index),
-    status = list(code = 500L, message = "Failed to parse Gemini batch output line")
-  )
 }
 
 #' Normalize a Gemini batch output line
@@ -211,29 +203,129 @@ gemini_json_fallback <- function(line) {
 gemini_normalize_result <- function(x, index_default) {
   index <- gemini_extract_index(x, default = index_default)
 
-  # Formats where response and error/status are wrapped in one object
-  if (!is.null(x$response) || !is.null(x$error) || !is.null(x$status)) {
-    if (!is.null(x$response) && is.null(x$error) && is.null(x$status)) {
-      return(list(index = index, result = list(status_code = 200L, body = x$response)))
-    }
-
-    status <- x$error %||% x$status %||% list()
-    code <- status$code %||% 500L
-    return(list(index = index, result = list(status_code = as.integer(code), body = NULL)))
+  if (!is.null(x$response) && is.null(x$error) && is.null(x$status)) {
+    return(list(
+      index = index,
+      result = list(status_code = 200L, body = x$response)
+    ))
   }
 
-  # Plain GenerateContentResponse lines (current file-mode output)
-  if (!is.null(x$candidates) || !is.null(x$promptFeedback) || !is.null(x$usageMetadata)) {
-    return(list(index = index, result = list(status_code = 200L, body = x)))
+  if (!is.null(x$error) || !is.null(x$status)) {
+    code <- x$error$code %||% x$status$code %||% 500L
+    return(list(
+      index = index,
+      result = list(status_code = as.integer(code), body = NULL)
+    ))
   }
 
   list(index = index, result = list(status_code = 500L, body = NULL))
+}
+
+#' Create a cache when every conversation has the same system prompt
+#' @noRd
+gemini_batch_cache <- function(provider, conversations, type, cache_ttl) {
+  if (is.null(cache_ttl) || length(conversations) == 0L) {
+    return(NULL)
+  }
+
+  chat_body <- asNamespace("ellmer")$chat_body
+  prompts <- vapply(conversations, function(conversation) {
+    body <- chat_body(provider, stream = FALSE, turns = conversation, type = type)
+    body$systemInstruction$parts$text %||% ""
+  }, character(1))
+
+  if (any(!nzchar(prompts))) {
+    cli::cli_warn(
+      "At least one conversation has no system prompt; skipping Gemini context caching."
+    )
+    return(NULL)
+  }
+  if (length(unique(prompts)) != 1L) {
+    cli::cli_warn(
+      "Conversations have different system prompts; skipping Gemini context caching."
+    )
+    return(NULL)
+  }
+
+  tryCatch(
+    gemini_create_cache(provider, prompts[[1]], cache_ttl),
+    error = function(e) {
+      cli::cli_warn(
+        "Gemini cache creation failed; submitting without caching: {e$message}"
+      )
+      NULL
+    }
+  )
+}
+
+#' Submit a Gemini batch, optionally replacing its system prompt with a cache
+#' @noRd
+gemini_batch_submit_legacy <- function(
+  provider,
+  conversations,
+  type = NULL,
+  cache_name = NULL
+) {
+  ellmer_ns <- asNamespace("ellmer")
+  path <- withr::local_tempfile(fileext = ".jsonl")
+
+  requests <- purrr::map(seq_along(conversations), function(i) {
+    body <- ellmer_ns$chat_body(
+      provider,
+      stream = FALSE,
+      turns = conversations[[i]],
+      type = type
+    )
+    body <- if (is.null(cache_name)) {
+      gemini_prepare_batch_body(body)
+    } else {
+      gemini_prepare_cached_body(body, cache_name)
+    }
+    list(key = paste0("chat-", i), request = body)
+  })
+
+  writeLines(
+    purrr::map_chr(requests, jsonlite::toJSON, auto_unbox = TRUE),
+    path
+  )
+
+  upload <- if (exists("gemini_upload_file", ellmer_ns, inherits = FALSE)) {
+    ellmer_ns$gemini_upload_file
+  } else {
+    gemini_upload_file
+  }
+  uploaded <- upload(provider, path)
+  if (is.null(uploaded$name) || !nzchar(uploaded$name)) {
+    cli::cli_abort("Gemini upload did not return a file resource name.")
+  }
+
+  req <- ellmer_ns$base_request(provider)
+  req <- httr2::req_url_path_append(
+    req,
+    "models",
+    paste0(provider@model, ":batchGenerateContent")
+  )
+  req <- httr2::req_body_json(req, list(
+    batch = list(
+      displayName = paste0("ellmer-extensions-", as.integer(Sys.time())),
+      model = paste0("models/", provider@model),
+      inputConfig = list(fileName = uploaded$name)
+    )
+  ))
+
+  result <- httr2::req_perform(req) |>
+    httr2::resp_body_json()
+  if (!is.null(cache_name)) {
+    result$.gemini_cache_name <- cache_name
+  }
+  result
 }
 
 # Method registration -----------------------------------------------------
 
 register_gemini_methods <- function() {
   ellmer_ns <- asNamespace("ellmer")
+  native <- gemini_native_batch_methods(ellmer_ns)
 
   has_batch_support <- ellmer_ns$has_batch_support
   batch_submit <- ellmer_ns$batch_submit
@@ -241,17 +333,68 @@ register_gemini_methods <- function() {
   batch_status <- ellmer_ns$batch_status
   batch_retrieve <- ellmer_ns$batch_retrieve
   batch_result_turn <- ellmer_ns$batch_result_turn
-  chat_body <- ellmer_ns$chat_body
   value_turn <- ellmer_ns$value_turn
-  ContentJson <- ellmer_ns$ContentJson
-  ContentText <- ellmer_ns$ContentText
-  ContentToolRequest <- ellmer_ns$ContentToolRequest
-  ContentImageInline <- ellmer_ns$ContentImageInline
-  AssistantTurn <- ellmer_ns$AssistantTurn
-  value_tokens <- ellmer_ns$value_tokens
-  get_token_cost <- ellmer_ns$get_token_cost
-  compact <- ellmer_ns$compact
+  as_json <- ellmer_ns$as_json
 
+  # Native ellmer owns Gemini batching and response parsing. The extension
+  # wraps only the three methods needed to carry optional cache metadata.
+  if (!is.null(native)) {
+    S7::method(batch_submit, ProviderGeminiExtended) <- function(
+      provider,
+      conversations,
+      type = NULL
+    ) {
+      cache_ttl <- attr(provider, ".gemini_cache_ttl")
+      if (is.null(cache_ttl)) {
+        return(native$submit(provider, conversations, type))
+      }
+
+      cache_name <- gemini_batch_cache(
+        provider,
+        conversations,
+        type,
+        cache_ttl
+      )
+      if (is.null(cache_name)) {
+        return(native$submit(provider, conversations, type))
+      }
+
+      tryCatch(
+        gemini_batch_submit_legacy(
+          provider,
+          conversations,
+          type,
+          cache_name
+        ),
+        error = function(e) {
+          gemini_delete_cache(provider, cache_name)
+          stop(e)
+        }
+      )
+    }
+
+    S7::method(batch_poll, ProviderGeminiExtended) <- function(provider, batch) {
+      cache_name <- batch$.gemini_cache_name
+      result <- native$poll(provider, batch)
+      if (!is.null(cache_name)) {
+        result$.gemini_cache_name <- cache_name
+      }
+      result
+    }
+
+    S7::method(batch_retrieve, ProviderGeminiExtended) <- function(provider, batch) {
+      cache_name <- batch$.gemini_cache_name
+      if (!is.null(cache_name)) {
+        on.exit(gemini_delete_cache(provider, cache_name), add = TRUE)
+      }
+      native$retrieve(provider, batch)
+    }
+
+    return(invisible())
+  }
+
+  # ellmer <= 0.4.0: retain the original batch implementation for projects
+  # that still use the extension as their Gemini batch provider.
   S7::method(has_batch_support, ProviderGeminiExtended) <- function(provider) {
     TRUE
   }
@@ -261,222 +404,112 @@ register_gemini_methods <- function() {
     conversations,
     type = NULL
   ) {
-    path <- withr::local_tempfile(fileext = ".jsonl")
+    cache_name <- gemini_batch_cache(
+      provider,
+      conversations,
+      type,
+      attr(provider, ".gemini_cache_ttl")
+    )
 
-    # Check if context caching is requested (attr set by chat_gemini_extended)
-    cache_ttl <- attr(provider, ".gemini_cache_ttl")
-    cache_name <- NULL
-
-    if (!is.null(cache_ttl) && length(conversations) > 0) {
-      # Extract system prompt from first conversation to validate uniformity
-      si_texts <- vapply(conversations, function(conv) {
-        body <- chat_body(provider, stream = FALSE, turns = conv, type = type)
-        si <- body$systemInstruction
-        if (is.null(si) || is.null(si$parts)) return("")
-        if (!is.null(names(si$parts))) return(si$parts$text %||% "")
-        if (length(si$parts) > 0) return(si$parts[[1]]$text %||% "")
-        ""
-      }, character(1))
-
-      unique_prompts <- unique(si_texts[nzchar(si_texts)])
-      if (length(unique_prompts) == 1L && all(nzchar(si_texts))) {
-        cache_name <- tryCatch(
-          gemini_create_cache(provider, unique_prompts, as.integer(cache_ttl)),
-          error = function(e) {
-            cli::cli_warn(
-              "Gemini cache creation failed, proceeding without caching: {e$message}"
-            )
-            NULL
-          }
-        )
-      } else if (length(unique_prompts) == 1L && !all(nzchar(si_texts))) {
-        cli::cli_warn(
-          "Some conversations have no system prompt; skipping Gemini context caching."
-        )
-      } else if (length(unique_prompts) > 1L) {
-        cli::cli_warn(
-          "Conversations have different system prompts; skipping Gemini context caching."
-        )
+    tryCatch(
+      gemini_batch_submit_legacy(provider, conversations, type, cache_name),
+      error = function(e) {
+        if (!is.null(cache_name)) {
+          gemini_delete_cache(provider, cache_name)
+        }
+        stop(e)
       }
-    }
-
-    # Build JSONL request lines
-    requests <- purrr::map(seq_along(conversations), function(i) {
-      body <- chat_body(
-        provider,
-        stream = FALSE,
-        turns = conversations[[i]],
-        type = type
-      )
-
-      prepared <- if (!is.null(cache_name)) {
-        gemini_prepare_cached_body(body, cache_name)
-      } else {
-        gemini_prepare_batch_body(body)
-      }
-
-      list(key = paste0("chat-", i), request = prepared)
-    })
-
-    json_lines <- purrr::map_chr(requests, function(x) {
-      jsonlite::toJSON(x, auto_unbox = TRUE)
-    })
-    writeLines(json_lines, path)
-
-    # Upload and submit; clean up cache on failure
-    batch_result <- tryCatch({
-      uploaded <- gemini_upload_file(provider, path)
-      if (is.null(uploaded$name) || !nzchar(uploaded$name)) {
-        cli::cli_abort("Gemini upload did not return a file resource name.")
-      }
-
-      req <- ellmer_ns$base_request(provider)
-      req <- httr2::req_url_path_append(
-        req,
-        "models",
-        paste0(provider@model, ":batchGenerateContent")
-      )
-      req <- httr2::req_body_json(
-        req,
-        list(
-          batch = list(
-            displayName = paste0("ellmer-extensions-", as.integer(Sys.time())),
-            model = paste0("models/", provider@model),
-            inputConfig = list(fileName = uploaded$name)
-          )
-        )
-      )
-
-      resp <- httr2::req_perform(req)
-      httr2::resp_body_json(resp)
-    }, error = function(e) {
-      if (!is.null(cache_name)) gemini_delete_cache(provider, cache_name)
-      stop(e)
-    })
-
-    # Embed cache name in batch object so it survives wait=FALSE serialization
-    if (!is.null(cache_name)) {
-      batch_result$.gemini_cache_name <- cache_name
-    }
-
-    batch_result
+    )
   }
 
   S7::method(batch_poll, ProviderGeminiExtended) <- function(provider, batch) {
     cache_name <- batch$.gemini_cache_name
     req <- ellmer_ns$base_request(provider)
     req <- httr2::req_url_path_append(req, batch$name)
-    resp <- httr2::req_perform(req)
-    result <- httr2::resp_body_json(resp)
-    # Carry cache name forward (API response won't include it)
-    if (!is.null(cache_name)) result$.gemini_cache_name <- cache_name
+    result <- httr2::req_perform(req) |>
+      httr2::resp_body_json()
+    if (!is.null(cache_name)) {
+      result$.gemini_cache_name <- cache_name
+    }
     result
   }
 
   S7::method(batch_status, ProviderGeminiExtended) <- function(provider, batch) {
     metadata <- batch$metadata %||% list()
-    response <- batch$response %||% list()
-    state <- metadata$state %||% response$state %||% "BATCH_STATE_UNSPECIFIED"
-    stats <- metadata$batchStats %||% response$batchStats %||% list()
+    stats <- metadata$batchStats %||% list()
+    state <- metadata$state %||% "BATCH_STATE_UNSPECIFIED"
 
     total <- as.integer(stats$requestCount %||% 0L)
     pending <- as.integer(stats$pendingRequestCount %||% 0L)
     succeeded <- as.integer(stats$successfulRequestCount %||% 0L)
     failed <- as.integer(stats$failedRequestCount %||% 0L)
-
-    if (!is.null(batch$error) && total > 0 && failed == 0L) {
+    if (!is.null(batch$error) && total > 0L && failed == 0L) {
       failed <- total
     }
 
-    terminal_states <- c(
+    is_done <- state %in% c(
       "BATCH_STATE_SUCCEEDED",
       "BATCH_STATE_FAILED",
       "BATCH_STATE_CANCELLED",
       "BATCH_STATE_EXPIRED"
     )
-
-    is_done <- state %in% terminal_states
-
-    # Keep polling if succeeded but output file isn't available yet.
-    # The API can report BATCH_STATE_SUCCEEDED before the responsesFile
-    # metadata is populated.
-    if (state == "BATCH_STATE_SUCCEEDED") {
-      responses_file <- response$output$responsesFile %||%
-        response$responsesFile %||%
-        metadata$output$responsesFile %||%
-        metadata$responsesFile %||%
-        ""
-      if (!nzchar(responses_file)) {
-        is_done <- FALSE
-      }
+    if (state == "BATCH_STATE_SUCCEEDED" && !nzchar(batch$response$responsesFile %||% "")) {
+      is_done <- FALSE
     }
-
-    n_processing <- max(pending, total - succeeded - failed, 0L)
 
     list(
       working = !is_done,
-      n_processing = n_processing,
+      n_processing = max(pending, total - succeeded - failed, 0L),
       n_succeeded = max(succeeded, 0L),
       n_failed = max(failed, 0L)
     )
   }
 
   S7::method(batch_retrieve, ProviderGeminiExtended) <- function(provider, batch) {
-    # Schedule cache cleanup (runs on both success and failure paths)
     cache_name <- batch$.gemini_cache_name
     if (!is.null(cache_name)) {
       on.exit(gemini_delete_cache(provider, cache_name), add = TRUE)
     }
 
     metadata <- batch$metadata %||% list()
-    response <- batch$response %||% list()
-    stats <- metadata$batchStats %||% response$batchStats %||% list()
-    request_count <- as.integer(stats$requestCount %||% 0L)
-
+    request_count <- as.integer(metadata$batchStats$requestCount %||% 0L)
     if (!is.null(batch$error)) {
       code <- as.integer(batch$error$code %||% 500L)
-      if (request_count <= 0L) {
-        return(list(list(status_code = code, body = NULL)))
-      }
-      return(replicate(request_count, list(status_code = code, body = NULL), simplify = FALSE))
+      return(rep(
+        list(list(status_code = code, body = NULL)),
+        max(0L, request_count)
+      ))
     }
 
-    batch_resource <- batch$response %||% batch$metadata
-    responses_file <- batch_resource$output$responsesFile %||%
-      batch_resource$responsesFile %||%
-      metadata$output$responsesFile %||%
-      NULL
-
-    if (is.null(responses_file) || !nzchar(responses_file)) {
+    responses_file <- batch$response$responsesFile %||% ""
+    if (!nzchar(responses_file)) {
       cli::cli_abort("Gemini batch completed but no output file was returned.")
     }
 
-    path_output <- tempfile(fileext = ".jsonl")
-    on.exit(unlink(path_output), add = TRUE)
-    gemini_download_file(provider, responses_file, path_output)
-
-    lines <- readLines(path_output, warn = FALSE)
-    lines <- lines[nzchar(trimws(lines))]
-
-    if (length(lines) == 0) {
-      cli::cli_abort("No results found in Gemini batch output file.")
-    }
-
-    parsed <- lapply(lines, function(line) {
-      tryCatch(
-        jsonlite::fromJSON(line, simplifyVector = FALSE),
-        error = function(e) gemini_json_fallback(line)
-      )
-    })
-
+    path <- withr::local_tempfile(fileext = ".jsonl")
+    gemini_download_file(provider, responses_file, path)
+    parsed <- ellmer_ns$read_ndjson(path)
     normalized <- purrr::imap(parsed, function(x, i) {
       gemini_normalize_result(x, index_default = as.integer(i))
     })
-
     ids <- vapply(normalized, function(x) x$index, integer(1))
     results <- lapply(normalized, function(x) x$result)
     results[order(ids)]
   }
+
+  ContentJson <- ellmer_ns$ContentJson
+  ContentText <- ellmer_ns$ContentText
+  ContentThinking <- ellmer_ns$ContentThinking
+  ContentToolRequest <- ellmer_ns$ContentToolRequest
+  ContentImageInline <- ellmer_ns$ContentImageInline
+  AssistantTurn <- ellmer_ns$AssistantTurn
+  value_tokens <- ellmer_ns$value_tokens
+  get_token_cost <- ellmer_ns$get_token_cost
+  compact <- ellmer_ns$compact
+  parent_as_json <- S7::method(
+    as_json,
+    list(ellmer_ns$ProviderGoogleGemini, ContentToolRequest)
+  )
 
   S7::method(value_turn, ProviderGeminiExtended) <- function(
     provider,
@@ -485,18 +518,18 @@ register_gemini_methods <- function() {
   ) {
     message <- result$candidates[[1]]$content
     contents <- lapply(message$parts, function(content) {
-      if (rlang::has_name(content, "text")) {
-        if (has_type && !isTRUE(content$thought)) {
-          ContentJson(string = content$text)
-        } else {
-          ContentText(content$text)
-        }
+      if (isTRUE(content$thought) && rlang::has_name(content, "text")) {
+        ContentThinking(content$text)
+      } else if (rlang::has_name(content, "text")) {
+        if (has_type) ContentJson(string = content$text) else ContentText(content$text)
       } else if (rlang::has_name(content, "functionCall")) {
-        ContentToolRequest(
+        request <- ContentToolRequest(
           content$functionCall$name,
           content$functionCall$name,
           content$functionCall$args
         )
+        attr(request, ".gemini_thought_signature") <- content$thoughtSignature
+        request
       } else if (rlang::has_name(content, "inlineData")) {
         ContentImageInline(
           type = content$inlineData$mimeType,
@@ -511,8 +544,24 @@ register_gemini_methods <- function() {
     })
     contents <- compact(contents)
     tokens <- value_tokens(provider, result)
-    cost <- get_token_cost(provider, tokens)
-    AssistantTurn(contents, json = result, tokens = unlist(tokens), cost = cost)
+    AssistantTurn(
+      contents,
+      json = result,
+      tokens = unlist(tokens),
+      cost = get_token_cost(provider, tokens)
+    )
+  }
+
+  S7::method(
+    as_json,
+    list(ProviderGeminiExtended, ContentToolRequest)
+  ) <- function(provider, x, ...) {
+    result <- parent_as_json(provider, x, ...)
+    signature <- attr(x, ".gemini_thought_signature")
+    if (!is.null(signature)) {
+      result$thoughtSignature <- signature
+    }
+    result
   }
 
   S7::method(batch_result_turn, ProviderGeminiExtended) <- function(
@@ -526,4 +575,6 @@ register_gemini_methods <- function() {
       NULL
     }
   }
+
+  invisible()
 }

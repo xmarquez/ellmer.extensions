@@ -52,7 +52,10 @@ chat_gemini_extended <- function(
   echo <- ellmer_ns$check_echo(echo)
 
   default_credentials <- if (exists("default_google_credentials", envir = ellmer_ns, inherits = FALSE)) {
-    ellmer_ns$default_google_credentials(variant = "gemini")
+    function() {
+      credential_function <- ellmer_ns$default_google_credentials(variant = "gemini")
+      credential_function()
+    }
   } else {
     function() {
       val <- Sys.getenv("GEMINI_API_KEY")
@@ -73,10 +76,6 @@ chat_gemini_extended <- function(
       "Gemini provider initialization failed. Ensure {.pkg ellmer} is installed."
     )
   }
-
-  # Defensive re-registration for devtools::load_all() sessions where .onLoad
-  # may not have attached this subclass method table yet.
-  suppressMessages(register_gemini_methods())
 
   provider <- ProviderGeminiExtended(
     name = "Google/Gemini",
@@ -101,7 +100,13 @@ chat_gemini_extended <- function(
     }
     if (cache_ttl < 3600L) {
       cli::cli_warn(
-        "{.arg cache_ttl} is {cache_ttl}s ({round(cache_ttl / 60)}min). Gemini batches can take hours to complete; if the cache expires before the batch runs, all requests will fail. Consider 86400 (24h)."
+        c(
+          "Gemini cache TTL is only {cache_ttl}s ({round(cache_ttl / 60)}min).",
+          "i" = paste(
+            "Batches can take hours; consider 86400 (24h) so the cache",
+            "does not expire before requests run."
+          )
+        )
       )
     }
     attr(provider, ".gemini_cache_ttl") <- cache_ttl

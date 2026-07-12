@@ -2,12 +2,10 @@
 #'
 #' @description
 #' Creates a chat interface for Anthropic's Claude API with support for
-#' extended thinking combined with structured output. Standard
-#' [ellmer::chat_anthropic()] cannot combine thinking (`reasoning_tokens`)
-#' with structured output because Anthropic's API forbids `tool_choice` with
-#' thinking enabled. This provider uses Anthropic's `output_config.format`
-#' (JSON schema) instead of `tool_choice` when thinking is active, avoiding
-#' the API conflict.
+#' extended and adaptive thinking combined with structured output. On recent
+#' versions of ellmer this is a backward-compatible wrapper around
+#' [ellmer::chat_anthropic()]. Older versions use the bundled compatibility
+#' provider when ellmer does not yet provide the requested feature.
 #'
 #' When `thinking` is `NULL` (the default), thinking is auto-detected from
 #' `params`: if `reasoning_tokens` is present, thinking is enabled
@@ -36,8 +34,9 @@
 #'     (behaves like [ellmer::chat_anthropic()]).
 #'   - `"enabled"`: extended thinking with explicit budget. Requires
 #'     `reasoning_tokens` in `params`.
-#'   - `"adaptive"`: adaptive thinking. Only available on Claude Opus 4.6 and
-#'     Sonnet 4.6; errors for 4.5 model IDs.
+#'   - `"adaptive"`: adaptive thinking. If `reasoning_effort` is not supplied,
+#'     it defaults to `"high"`. Model compatibility is determined by Anthropic,
+#'     rather than by a hard-coded model allowlist.
 #'
 #' @return A [ellmer::Chat] object.
 #'
@@ -55,12 +54,6 @@
 #' When thinking is not active (no `reasoning_tokens` in `params` and
 #' `thinking = NULL`), the provider falls back to standard
 #' `tool_choice`-based structured output (identical to `ellmer::chat_anthropic()`).
-#'
-#' ## Model compatibility
-#'
-#' - `thinking = "enabled"`: All Claude 4.5 models (Haiku, Sonnet, Opus) and
-#'   later. Requires `reasoning_tokens` in `params` to set the thinking budget.
-#' - `thinking = "adaptive"`: Claude Opus 4.6 and Sonnet 4.6 only.
 #'
 #' @seealso [ellmer::chat_anthropic()], [batch_chat_structured()]
 #' @family chatbots
@@ -85,54 +78,60 @@ chat_anthropic_extended <- function(
   echo <- ellmer_ns$check_echo(echo)
   cache <- match.arg(cache)
 
-  # Validate thinking parameter
+  params <- params %||% ellmer_ns$params()
+  param_list <- as.list(params)
+
   if (!is.null(thinking)) {
     thinking <- match.arg(thinking, c("enabled", "adaptive"))
 
     if (identical(thinking, "enabled")) {
-      param_list <- if (is.list(params)) params else list()
-      if (inherits(params, "ellmer_params")) {
-        param_list <- as.list(params)
-      }
       if (!"reasoning_tokens" %in% names(param_list)) {
         cli::cli_abort(
           c(
             '{.arg thinking} = "enabled" requires {.arg reasoning_tokens} in {.arg params}.',
-            "i" = 'Use {.code params = ellmer::params(reasoning_tokens = 8192)}.'
+            "i" = "Use {.code params = ellmer::params(reasoning_tokens = 8192)}."
           )
         )
       }
-    }
-
-    if (identical(thinking, "adaptive")) {
-      # Error for known incompatible models; warn for unknown models
-      is_45_model <- grepl("4-5|4\\.5", model, perl = TRUE)
-      if (is_45_model) {
-        cli::cli_abort(
-          c(
-            '{.arg thinking} = "adaptive" is not supported on {.val {model}}.',
-            "i" = "Adaptive thinking requires Claude Opus 4.6 or Sonnet 4.6.",
-            "i" = 'For this model, use {.code thinking = "enabled"} with {.arg reasoning_tokens}.'
-          )
-        )
-      } else if (!grepl("4-6|4\\.6", model, perl = TRUE)) {
-        cli::cli_warn(
-          c(
-            '{.arg thinking} = "adaptive" is documented for Claude Opus 4.6 and Sonnet 4.6.',
-            "i" = "Verify that {.val {model}} supports adaptive thinking."
-          )
-        )
+      params$reasoning_effort <- NULL
+      if (is.null(params$max_tokens)) {
+        params$max_tokens <- params$reasoning_tokens + 16384L
       }
+    } else {
+      # Explicit adaptive thinking takes precedence over a token budget.
+      params$reasoning_tokens <- NULL
+      params$reasoning_effort <- params$reasoning_effort %||% "high"
+      params$max_tokens <- params$max_tokens %||% 32768L
     }
   } else {
     # Auto-detect: if reasoning_tokens is present, enable thinking
-    param_list <- if (is.list(params)) params else list()
-    if (inherits(params, "ellmer_params")) {
-      param_list <- as.list(params)
-    }
     if ("reasoning_tokens" %in% names(param_list)) {
       thinking <- "enabled"
+      params$reasoning_effort <- NULL
+      if (is.null(params$max_tokens)) {
+        params$max_tokens <- params$reasoning_tokens + 16384L
+      }
     }
+  }
+
+  use_native <- is.null(thinking) ||
+    anthropic_has_native_structured_output() &&
+      (!identical(thinking, "adaptive") || anthropic_has_native_adaptive())
+
+  if (use_native) {
+    return(ellmer_ns$chat_anthropic(
+      system_prompt = system_prompt,
+      params = params,
+      model = model,
+      cache = cache,
+      api_args = api_args,
+      base_url = base_url,
+      beta_headers = beta_headers,
+      api_key = api_key,
+      credentials = credentials,
+      api_headers = api_headers,
+      echo = echo
+    ))
   }
 
   credentials <- ellmer_ns$as_credentials(
@@ -148,13 +147,10 @@ chat_anthropic_extended <- function(
     )
   }
 
-  # Defensive re-registration for devtools::load_all() sessions
-  suppressMessages(register_anthropic_methods())
-
   provider <- ProviderAnthropicExtended(
     name = "Anthropic",
     model = model,
-    params = params %||% ellmer_ns$params(),
+    params = params,
     extra_args = api_args,
     extra_headers = api_headers,
     base_url = base_url,
@@ -172,4 +168,33 @@ chat_anthropic_extended <- function(
     system_prompt = system_prompt,
     echo = echo
   )
+}
+
+#' Does ellmer natively support Claude structured output?
+#' @noRd
+anthropic_has_native_structured_output <- function() {
+  exists(
+    "has_claude_structured_output",
+    envir = asNamespace("ellmer"),
+    inherits = FALSE
+  )
+}
+
+#' Does ellmer natively translate reasoning effort for Claude?
+#' @noRd
+anthropic_has_native_adaptive <- function() {
+  ellmer_ns <- asNamespace("ellmer")
+  method <- tryCatch(
+    S7::method(
+      ellmer_ns[["chat_params"]],
+      ellmer_ns[["ProviderAnthropic"]]
+    ),
+    error = function(cnd) NULL
+  )
+
+  !is.null(method) && any(grepl(
+    "reasoning_effort",
+    deparse(body(method)),
+    fixed = TRUE
+  ))
 }

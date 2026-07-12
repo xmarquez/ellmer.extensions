@@ -49,3 +49,42 @@ jobs:
         with:
           upload-snapshots: true
           build_args: 'c("--no-manual","--compact-vignettes=gs+qpdf")'
+
+  ellmer-compatibility:
+    runs-on: ubuntu-latest
+
+    name: ellmer (${{ matrix.ellmer-label }})
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - ellmer-label: minimum
+            ellmer-package: any::ellmer@0.4.0
+          - ellmer-label: development
+            ellmer-package: tidyverse/ellmer
+
+    env:
+      GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+      R_KEEP_PKG_SOURCE: yes
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: r-lib/actions/setup-pandoc@v2
+
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: release
+          use-public-rspm: true
+
+      - uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          extra-packages: |
+            any::rcmdcheck
+            ${{ matrix.ellmer-package }}
+          needs: check
+
+      - uses: r-lib/actions/check-r-package@v2
+        with:
+          build_args: 'c("--no-manual","--compact-vignettes=gs+qpdf")'
