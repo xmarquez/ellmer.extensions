@@ -6,7 +6,7 @@
 \alias{ellmer.extensions-package}
 \title{ellmer.extensions: Groq, Gemini, and Anthropic Provider Extensions for Ellmer}
 \description{
-Provides backward-compatible ellmer provider wrappers for Groq, Gemini, and Anthropic. Uses native ellmer provider functionality when it is available, retains legacy batch compatibility for older ellmer releases, and adds opt-in Gemini batch context caching.
+Provides backward-compatible ellmer provider wrappers for Groq, Gemini, and Anthropic. Uses native ellmer provider functionality when it is available, retains legacy batch compatibility for older ellmer releases, adds opt-in Gemini batch context caching, and reports actual OpenAI organization costs by API key, project, or line item.
 }
 \seealso{
 Useful links:

@@ -6,7 +6,7 @@
 - **Purpose:** Preserve backward-compatible provider entry points while using
   native [ellmer](https://github.com/tidyverse/ellmer) functionality when it is
   available. The remaining extension-specific feature is opt-in Gemini batch
-  context caching.
+  context caching. The package also provides OpenAI organization cost reports.
 - **Origin:** Cloned from `groqDeveloper` and adapted with Gemini batch functionality.
 
 ## Architecture
@@ -35,6 +35,7 @@ load must fail rather than leave exported constructors backed by `NULL` classes.
 | `R/provider-gemini.R` | Native Gemini batch delegation, legacy compatibility, context caching |
 | `R/chat-anthropic.R` | Anthropic chat constructor (`chat_anthropic_extended`) |
 | `R/provider-anthropic.R` | `ProviderAnthropicExtended` class, chat_body and value_turn overrides |
+| `R/openai-costs.R` | OpenAI organization cost reporting and pagination |
 | `R/reexports.R` | Re-exports ellmer generics (`batch_chat`, `parallel_chat`, etc.) |
 | `R/ellmer.extensions-package.R` | Package-level documentation, `@import S7`, `@importFrom rlang %\|\|%` |
 
@@ -116,6 +117,8 @@ Opt-in via `cache_ttl` parameter in `chat_gemini_extended()`. When set, batch op
 - Groq: `GROQ_API_KEY`
 - Gemini: `GEMINI_API_KEY` (or `GOOGLE_API_KEY`)
 - Anthropic: `ANTHROPIC_API_KEY`
+- OpenAI cost reporting: `OPENAI_ADMIN_KEY` (Organization Admin key; read-only
+  scope is sufficient)
 - Keep `.Renviron` local only; **never commit it**
 - `.Renviron.example` contains placeholder values only
 

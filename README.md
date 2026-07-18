@@ -18,6 +18,8 @@ corresponding features were added to
   batch context caching.
 - `chat_anthropic_extended()` for extended or adaptive thinking with
   structured output.
+- `openai_costs()` for actual OpenAI organization costs by API key,
+  project, or line item.
 
 On current ellmer versions the constructors delegate to native provider
 functionality wherever possible. The bundled implementations remain as a
@@ -43,8 +45,13 @@ Set the provider keys you use in `.Renviron` (edit with
     GROQ_API_KEY=your-groq-key
     GEMINI_API_KEY=your-gemini-key
     ANTHROPIC_API_KEY=your-anthropic-key
+    OPENAI_ADMIN_KEY=your-read-only-openai-admin-key
 
 (`GOOGLE_API_KEY` also works for Gemini.)
+
+`OPENAI_ADMIN_KEY` is separate from the ordinary key used for model
+calls. It should be an Organization Admin API key with read-only access
+and is needed only for cost reporting.
 
 ## Examples
 
@@ -187,6 +194,28 @@ parallel_chat(
 
 - Groq models: `models_groq()`
 - Gemini models: `ellmer::models_google_gemini()`
+
+## OpenAI cost reporting
+
+`openai_costs()` retrieves actual charged amounts from OpenAI’s
+organization Costs API. It automatically follows pagination and can
+filter or group reports by API key ID, project ID, or line item.
+
+``` r
+library(ellmer.extensions)
+
+costs <- openai_costs(
+  start_time = Sys.Date() - 30,
+  group_by = c("api_key_id", "line_item")
+)
+
+sum(costs$amount)
+```
+
+API key filters use OpenAI’s key identifier (for example,
+`"key_abc123"`), not the secret `"sk-..."` value. OpenAI does not
+currently document an API endpoint for remaining prepaid credit; view
+that balance in the organization Billing page.
 
 ## Groq support
 

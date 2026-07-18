@@ -1,0 +1,56 @@
+{
+  "object": "page",
+  "has_more": false,
+  "next_page": null,
+  "data": [
+    {
+      "object": "bucket",
+      "start_time": 1783728000,
+      "end_time": 1783814400,
+      "start_time_iso": "2026-07-11T00:00:00",
+      "end_time_iso": "2026-07-12T00:00:00",
+      "results": [
+        {
+          "object": "organization.costs.result",
+          "amount": {
+            "value": 0.125,
+            "currency": "usd"
+          },
+          "quantity": 1000000,
+          "line_item": "batch api | gpt-5-mini-2025-08-07, input",
+          "user_id": null,
+          "api_key_id": "key_fixture",
+          "project_id": "proj_fixture",
+          "organization_id": "org_fixture",
+          "project_name": "Fixture project",
+          "organization_name": "Fixture organization",
+          "user_email": null
+        },
+        {
+          "object": "organization.costs.result",
+          "amount": {
+            "value": 0.5,
+            "currency": "usd"
+          },
+          "quantity": 250000,
+          "line_item": "batch api | gpt-5-mini-2025-08-07, output",
+          "user_id": null,
+          "api_key_id": "key_fixture",
+          "project_id": "proj_fixture",
+          "organization_id": "org_fixture",
+          "project_name": "Fixture project",
+          "organization_name": "Fixture organization",
+          "user_email": null
+        }
+      ]
+    },
+    {
+      "object": "bucket",
+      "start_time": 1783814400,
+      "end_time": 1783900800,
+      "start_time_iso": "2026-07-12T00:00:00",
+      "end_time_iso": "2026-07-13T00:00:00",
+      "results": []
+    }
+  ]
+}

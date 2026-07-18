@@ -1,5 +1,12 @@
 # ellmer.extensions 0.3.0
 
+## OpenAI cost reporting
+
+* Added `openai_costs()` for actual organization costs, with automatic
+  pagination and filtering or grouping by API key, project, and line item. It
+  uses a separately scoped `OPENAI_ADMIN_KEY`; ordinary model API keys are not
+  accepted by OpenAI's Administration API.
+
 ## Compatibility
 
 * Groq, Gemini, and Anthropic constructors now use native `ellmer`
