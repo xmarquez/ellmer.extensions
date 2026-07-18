@@ -11,8 +11,8 @@
 <script src="deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
 <link href="deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
 <script src="deps/headroom-0.11.0/headroom.min.js"></script><script src="deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="deps/search-1.0.0/fuse.min.js"></script><script src="deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="pkgdown.js"></script><meta property="og:title" content="Groq, Gemini, and Anthropic Provider Extensions for Ellmer">
-<meta name="description" content="Provides backward-compatible ellmer provider wrappers for Groq, Gemini, and Anthropic. Uses native ellmer provider functionality when it is available, retains legacy batch compatibility for older ellmer releases, and adds opt-in Gemini batch context caching.">
-<meta property="og:description" content="Provides backward-compatible ellmer provider wrappers for Groq, Gemini, and Anthropic. Uses native ellmer provider functionality when it is available, retains legacy batch compatibility for older ellmer releases, and adds opt-in Gemini batch context caching.">
+<meta name="description" content="Provides backward-compatible ellmer provider wrappers for Groq, Gemini, and Anthropic. Uses native ellmer provider functionality when it is available, retains legacy batch compatibility for older ellmer releases, adds opt-in Gemini batch context caching, and reports actual OpenAI organization costs by API key, project, or line item.">
+<meta property="og:description" content="Provides backward-compatible ellmer provider wrappers for Groq, Gemini, and Anthropic. Uses native ellmer provider functionality when it is available, retains legacy batch compatibility for older ellmer releases, adds opt-in Gemini batch context caching, and reports actual OpenAI organization costs by API key, project, or line item.">
 </head>
 <body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
@@ -59,6 +59,8 @@
 <code><a href="reference/chat_gemini_extended.html">chat_gemini_extended()</a></code> for Gemini file-based batches and optional batch context caching.</li>
 <li>
 <code><a href="reference/chat_anthropic_extended.html">chat_anthropic_extended()</a></code> for extended or adaptive thinking with structured output.</li>
+<li>
+<code><a href="reference/openai_costs.html">openai_costs()</a></code> for actual OpenAI organization costs by API key, project, or line item.</li>
 </ul>
 <p>On current ellmer versions the constructors delegate to native provider functionality wherever possible. The bundled implementations remain as a temporary compatibility path for ellmer 0.4.0 and for Gemini batch context caching. The returned chats work with ellmer generics such as <code><a href="https://ellmer.tidyverse.org/reference/batch_chat.html" class="external-link">batch_chat()</a></code>, <code><a href="https://ellmer.tidyverse.org/reference/batch_chat.html" class="external-link">batch_chat_structured()</a></code>, and <code><a href="https://ellmer.tidyverse.org/reference/parallel_chat.html" class="external-link">parallel_chat()</a></code>.</p>
 <div class="section level2">
@@ -75,8 +77,10 @@
 <p>Set the provider keys you use in <code>.Renviron</code> (edit with <code>usethis::edit_r_environ()</code>):</p>
 <div class="sourceCode" id="cb2"><pre class="sourceCode R"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" tabindex="-1"></a>GROQ_API_KEY<span class="ot">=</span>your<span class="sc">-</span>groq<span class="sc">-</span>key</span>
 <span id="cb2-2"><a href="#cb2-2" tabindex="-1"></a>GEMINI_API_KEY<span class="ot">=</span>your<span class="sc">-</span>gemini<span class="sc">-</span>key</span>
-<span id="cb2-3"><a href="#cb2-3" tabindex="-1"></a>ANTHROPIC_API_KEY<span class="ot">=</span>your<span class="sc">-</span>anthropic<span class="sc">-</span>key</span></code></pre></div>
+<span id="cb2-3"><a href="#cb2-3" tabindex="-1"></a>ANTHROPIC_API_KEY<span class="ot">=</span>your<span class="sc">-</span>anthropic<span class="sc">-</span>key</span>
+<span id="cb2-4"><a href="#cb2-4" tabindex="-1"></a>OPENAI_ADMIN_KEY<span class="ot">=</span>your<span class="sc">-</span>read<span class="sc">-</span>only<span class="sc">-</span>openai<span class="sc">-</span>admin<span class="sc">-</span>key</span></code></pre></div>
 <p>(<code>GOOGLE_API_KEY</code> also works for Gemini.)</p>
+<p><code>OPENAI_ADMIN_KEY</code> is separate from the ordinary key used for model calls. It should be an Organization Admin API key with read-only access and is needed only for cost reporting.</p>
 </div>
 <div class="section level2">
 <h2 id="examples">Examples<a class="anchor" aria-label="anchor" href="#examples"></a>
@@ -217,6 +221,21 @@
 </ul>
 </div>
 <div class="section level2">
+<h2 id="openai-cost-reporting">OpenAI cost reporting<a class="anchor" aria-label="anchor" href="#openai-cost-reporting"></a>
+</h2>
+<p><code><a href="reference/openai_costs.html">openai_costs()</a></code> retrieves actual charged amounts from OpenAI’s organization Costs API. It automatically follows pagination and can filter or group reports by API key ID, project ID, or line item.</p>
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/xmarquez/ellmer.extensions" class="external-link">ellmer.extensions</a></span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">costs</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/openai_costs.html">openai_costs</a></span><span class="op">(</span></span>
+<span>  start_time <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Sys.time.html" class="external-link">Sys.Date</a></span><span class="op">(</span><span class="op">)</span> <span class="op">-</span> <span class="fl">30</span>,</span>
+<span>  group_by <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"api_key_id"</span>, <span class="st">"line_item"</span><span class="op">)</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">costs</span><span class="op">$</span><span class="va">amount</span><span class="op">)</span></span></code></pre></div>
+<p>API key filters use OpenAI’s key identifier (for example, <code>"key_abc123"</code>), not the secret <code>"sk-..."</code> value. OpenAI does not currently document an API endpoint for remaining prepaid credit; view that balance in the organization Billing page.</p>
+</div>
+<div class="section level2">
 <h2 id="groq-support">Groq support<a class="anchor" aria-label="anchor" href="#groq-support"></a>
 </h2>
 <p>Provider model lists and capabilities change frequently. Use <code><a href="reference/models_groq.html">models_groq()</a></code> for the models available to your account and consult Groq’s current documentation for <a href="https://console.groq.com/docs/structured-outputs" class="external-link">structured outputs</a>, <a href="https://console.groq.com/docs/reasoning" class="external-link">reasoning</a>, and <a href="https://console.groq.com/docs/batch" class="external-link">batch processing</a>.</p>
@@ -230,7 +249,7 @@
 <h2 id="anthropic-extended-thinking-with-structured-output">Anthropic extended thinking with structured output<a class="anchor" aria-label="anchor" href="#anthropic-extended-thinking-with-structured-output"></a>
 </h2>
 <p><code><a href="reference/chat_anthropic_extended.html">chat_anthropic_extended()</a></code> preserves the older package interface for combining thinking with structured output. Current ellmer versions handle this natively; older versions use this package’s <code>output_config.format</code> compatibility path.</p>
-<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/xmarquez/ellmer.extensions" class="external-link">ellmer.extensions</a></span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">chat</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/chat_anthropic_extended.html">chat_anthropic_extended</a></span><span class="op">(</span></span>

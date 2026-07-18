@@ -35,6 +35,10 @@
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.3.0" id="ellmerextensions-030">ellmer.extensions 0.3.0<a class="anchor" aria-label="anchor" href="#ellmerextensions-030"></a></h2>
 <div class="section level3">
+<h3 id="openai-cost-reporting-0-3-0">OpenAI cost reporting<a class="anchor" aria-label="anchor" href="#openai-cost-reporting-0-3-0"></a></h3>
+<ul><li>Added <code><a href="../reference/openai_costs.html">openai_costs()</a></code> for actual organization costs, with automatic pagination and filtering or grouping by API key, project, and line item. It uses a separately scoped <code>OPENAI_ADMIN_KEY</code>; ordinary model API keys are not accepted by OpenAI’s Administration API.</li>
+</ul></div>
+<div class="section level3">
 <h3 id="compatibility-0-3-0">Compatibility<a class="anchor" aria-label="anchor" href="#compatibility-0-3-0"></a></h3>
 <ul><li><p>Groq, Gemini, and Anthropic constructors now use native <code>ellmer</code> functionality when available while retaining legacy implementations for <code>ellmer</code> 0.4.0.</p></li>
 <li><p><code><a href="../reference/chat_groq_developer.html">chat_groq_developer()</a></code> now sends <code>reasoning_effort</code> supplied through either <code><a href="https://ellmer.tidyverse.org/reference/params.html" class="external-link">ellmer::params()</a></code> or <code>api_args</code>, including in durable batch request bodies.</p></li>

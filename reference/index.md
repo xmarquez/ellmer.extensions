@@ -12,3 +12,5 @@
   : Chat with Groq AI Models (Developer Version)
 - [`models_groq()`](https://xmarquez.github.io/ellmer.extensions/reference/models_groq.md)
   : List Available Groq Models
+- [`openai_costs()`](https://xmarquez.github.io/ellmer.extensions/reference/openai_costs.md)
+  : Report OpenAI API Costs

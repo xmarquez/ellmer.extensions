@@ -40,7 +40,7 @@
 <strong>Package name:</strong> <code>ellmer.extensions</code>
 </li>
 <li>
-<strong>Purpose:</strong> Preserve backward-compatible provider entry points while using native <a href="https://github.com/tidyverse/ellmer" class="external-link">ellmer</a> functionality when it is available. The remaining extension-specific feature is opt-in Gemini batch context caching.</li>
+<strong>Purpose:</strong> Preserve backward-compatible provider entry points while using native <a href="https://github.com/tidyverse/ellmer" class="external-link">ellmer</a> functionality when it is available. The remaining extension-specific feature is opt-in Gemini batch context caching. The package also provides OpenAI organization cost reports.</li>
 <li>
 <strong>Origin:</strong> Cloned from <code>groqDeveloper</code> and adapted with Gemini batch functionality.</li>
 </ul></div>
@@ -78,6 +78,8 @@
 </tr><tr><td><code>R/provider-anthropic.R</code></td>
 <td>
 <code>ProviderAnthropicExtended</code> class, chat_body and value_turn overrides</td>
+</tr><tr><td><code>R/openai-costs.R</code></td>
+<td>OpenAI organization cost reporting and pagination</td>
 </tr><tr><td><code>R/reexports.R</code></td>
 <td>Re-exports ellmer generics (<code>batch_chat</code>, <code>parallel_chat</code>, etc.)</td>
 </tr><tr><td><code>R/ellmer.extensions-package.R</code></td>
@@ -144,6 +146,7 @@
 <li>Gemini: <code>GEMINI_API_KEY</code> (or <code>GOOGLE_API_KEY</code>)</li>
 <li>Anthropic: <code>ANTHROPIC_API_KEY</code>
 </li>
+<li>OpenAI cost reporting: <code>OPENAI_ADMIN_KEY</code> (Organization Admin key; read-only scope is sufficient)</li>
 <li>Keep <code>.Renviron</code> local only; <strong>never commit it</strong>
 </li>
 <li>
